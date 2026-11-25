@@ -8,6 +8,8 @@ import { MonthlyMatrix } from './components/MonthlyMatrix';
 import { LeaveReliefModal } from './components/LeaveReliefModal';
 import { ScenarioSimulator } from './components/ScenarioSimulator';
 import { TelegramBotSimulator } from './components/TelegramBotSimulator';
+import { MemberManagement } from './components/MemberManagement';
+import { OneStepTestModule } from './components/OneStepTestModule';
 import { AuthModal } from './components/AuthModal';
 import { VersionModal } from './components/VersionModal';
 import { exportScheduleToExcel } from './utils/excelExport';
@@ -115,6 +117,7 @@ export default function App() {
             schedule2026={schedule2026}
             schedule2027={schedule2027}
             anonymize={anonymize}
+            onApplyScenarioToLive={(newOverrides) => setOverrides((prev) => ({ ...prev, ...newOverrides }))}
           />
         )}
 
@@ -123,6 +126,18 @@ export default function App() {
             schedule={activeSchedule}
             anonymize={anonymize}
           />
+        )}
+
+        {activeTab === 'members' && (
+          <MemberManagement
+            currentRole={currentRole}
+            anonymize={anonymize}
+            onToggleAnonymize={() => setAnonymize((v) => !v)}
+          />
+        )}
+
+        {activeTab === 'onestep-test' && (
+          <OneStepTestModule engine={engine} />
         )}
       </main>
 
@@ -135,14 +150,9 @@ export default function App() {
               onClick={() => setIsVersionModalOpen(true)}
               className="ml-2 text-brand-600 hover:text-brand-800 underline font-semibold"
             >
-              버전 v1.0.0 (업데이트 내역)
+              버전 v1.1.0 (업데이트 내역)
             </button>
-            {/* Version Modal */}
-      <VersionModal
-        isOpen={isVersionModalOpen}
-        onClose={() => setIsVersionModalOpen(false)}
-      />
-    </div>
+          </div>
           <div className="flex items-center space-x-4">
             <AuthModal
               currentRole={currentRole}

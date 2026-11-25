@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { DaySchedule } from '../engine/types';
 import { UserRole } from '../services/supabaseClient';
-import { Award, Check, Sparkles, UserCheck, Users } from 'lucide-react';
+import { calculateReliefCandidates, ReliefCandidate } from '../engine/reliefEngine';
+import { Check, Sparkles, Users, AlertCircle, ShieldAlert } from 'lucide-react';
 
 interface LeaveReliefModalProps {
   schedule: DaySchedule[];
@@ -17,112 +18,111 @@ export const LeaveReliefModal: React.FC<LeaveReliefModalProps> = ({
   onApplyRelief,
 }) => {
   const [targetDateStr, setTargetDateStr] = useState<string>('2027-01-15');
-  const [requesterSlot, setRequesterSlot] = useState<number>(3); // e.g. Slot 3
+  const [requesterSlot, setRequesterSlot] = useState<number>(3); // e.g. Slot 3 박경욱
   const [leaveType, setLeaveType] = useState<string>('연차');
   const [reason, setReason] = useState<string>('개인 사유 연차 신청');
-  const [compType, setCompType] = useState<'OT_PAY' | 'SWAP_CREDIT'>('OT_PAY');
   const [selectedReliefSlot, setSelectedReliefSlot] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  const dayIndex = schedule.findIndex((d) => d.dateStr === targetDateStr);
-  const targetDay = dayIndex >= 0 ? schedule[dayIndex] : schedule[0];
-
-  const requesterShift = targetDay?.shifts.find((s) => s.slotNo === requesterSlot);
 
   const getName = (slotNo: number, baseName: string) => {
     if (anonymize) return `HP-0${slotNo}`;
     return baseName;
   };
 
-  // Top 3 Recommendation Engine
-  // 1. Hard Filter: Must be OFF (X) today, shift must not cause > 3 consecutive days, no quick return
-  // 2. Score: Phase-11 bonus (+100) -> Same Unit (+50) -> Fewer total working days / credit
-  const candidates = targetDay?.shifts
-    .filter((s) => s.slotNo !== requesterSlot && s.shiftCode === 'X')
-    .map((s) => {
-      let score = 0;
-      let reasons: string[] = [];
+  const targetDay = useMemo(
+    () => schedule.find((d) => d.dateStr === targetDateStr) || schedule[0],
+    [schedule, targetDateStr]
+  );
 
-      // Check if same unit
-      if (requesterShift && s.unit === requesterShift.unit) {
-        score += 50;
-        reasons.push('동일 호기 소속 (+50)');
-      }
+  const requesterShift = targetDay?.shifts.find((s) => s.slotNo === requesterSlot);
 
-      // Check Phase 11
-      if (s.phase === 11) {
-        score += 100;
-        reasons.push('Phase-11 NNN 직후 휴무 최우선 (+100)');
-      }
+  // Exact Top 3 Recommendation using ReliefEngine
+  const candidates: ReliefCandidate[] = useMemo(() => {
+    return calculateReliefCandidates(schedule, targetDateStr, requesterSlot);
+  }, [schedule, targetDateStr, requesterSlot]);
 
-      // Credit bonus
-      score += 20;
-
-      return {
-        slotNo: s.slotNo,
-        memberName: getName(s.slotNo, s.memberName),
-        unit: s.unit,
-        phase: s.phase,
-        score,
-        reasons,
-      };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3) || [];
+  const eligibleCandidates = candidates.filter((c) => c.isEligible);
+  const top3 = eligibleCandidates.slice(0, 3);
+  const disqualified = candidates.filter((c) => !c.isEligible);
 
   const handleConfirm = () => {
     if (!selectedReliefSlot) return;
     onApplyRelief(targetDateStr, requesterSlot, selectedReliefSlot, `${leaveType}: ${reason}`);
-    setSuccessMessage(`성공적으로 대근자가 매칭되었습니다! (Slot ${requesterSlot} -> Slot ${selectedReliefSlot})`);
-    setTimeout(() => setSuccessMessage(null), 4000);
+    const selectedCandidate = candidates.find((c) => c.slotNo === selectedReliefSlot);
+    setSuccessMessage(
+      `성공적으로 대근자가 매칭 및 승인되었습니다! (${getName(requesterSlot, requesterShift?.memberName || '')} -> ${getName(
+        selectedReliefSlot,
+        selectedCandidate?.memberName || ''
+      )})`
+    );
+    setSelectedReliefSlot(null);
+    setTimeout(() => setSuccessMessage(null), 5000);
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <div className="flex items-center space-x-3 mb-6 pb-4 border-b">
-          <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600">
-            <Users className="w-5 h-5" />
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Top Banner */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600">
+            <Users className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900">휴가 신청 및 대근자 자동 추천 엔진</h2>
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              휴가 신청 및 최적 대근자 자동 추천 엔진
+              <span className="px-2 py-0.5 text-xs font-bold bg-brand-100 text-brand-800 rounded-full">
+                Section 5.3 알고리즘 적용
+              </span>
+            </h2>
             <p className="text-xs text-slate-500">
-              Hard 제약 필터링 및 4단계 점수 기반 알고리즘으로 최적의 대근자 Top 3를 추천합니다.
+              Hard 제약조건(역순환 방지, 연속근무 3일 이하, 당일 휴무자) 필터링 및 4단계 적합도 공식에 따라 Top 3를 자동 산출합니다.
             </p>
           </div>
         </div>
 
-        {successMessage && (
-          <div className="p-4 mb-6 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center space-x-2">
-            <Check className="w-4 h-4 text-emerald-600" />
-            <span>{successMessage}</span>
-          </div>
-        )}
+        <div className="text-right text-xs">
+          <span className="font-bold text-slate-700 block">수학적 적합도 공식:</span>
+          <code className="text-[11px] text-purple-700 font-mono">
+            Score = 100×Phase11 + 50×SameUnit - 10×Shifts - 20×Relief - 5×Credit
+          </code>
+        </div>
+      </div>
 
-        {/* Form Inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {successMessage && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center space-x-2">
+          <Check className="w-4 h-4 text-emerald-600" />
+          <span>{successMessage}</span>
+        </div>
+      )}
+
+      {/* Form: Vacation Request Inputs */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <h3 className="font-extrabold text-slate-900 text-sm pb-2 border-b">1. 휴가 신청 정보 입력</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">대상 일자</label>
+            <label className="font-bold text-slate-700 block mb-1">휴가 대상 일자</label>
             <input
               type="date"
               value={targetDateStr}
               onChange={(e) => setTargetDateStr(e.target.value)}
-              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 bg-white"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-xs focus:ring-1 focus:ring-brand-500"
             />
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">신청자 (휴가자)</label>
+            <label className="font-bold text-slate-700 block mb-1">휴가 신청자 (슬롯)</label>
             <select
               value={requesterSlot}
               onChange={(e) => setRequesterSlot(Number(e.target.value))}
-              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 bg-white"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-semibold text-xs focus:ring-1 focus:ring-brand-500"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((s) => {
-                const shift = targetDay?.shifts.find((shift) => shift.slotNo === s);
+                const shift = targetDay?.shifts.find((item) => item.slotNo === s);
+                const name = shift ? getName(s, shift.memberName) : `Slot ${s}`;
+                const code = shift?.shiftCode || 'X';
                 return (
                   <option key={s} value={s}>
-                    Slot {s}: {getName(s, shift?.memberName || '')} ({shift?.shiftCode})
+                    Slot {s} ({name}) - 당일 [{code}]
                   </option>
                 );
               })}
@@ -130,115 +130,188 @@ export const LeaveReliefModal: React.FC<LeaveReliefModalProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">휴가 유형</label>
+            <label className="font-bold text-slate-700 block mb-1">휴가 종류</label>
             <select
               value={leaveType}
               onChange={(e) => setLeaveType(e.target.value)}
-              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 bg-white"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-semibold text-xs"
             >
-              {['연차', '대휴 (크레딧 사용)', '병가', '공가', '교육', '경조'].map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
+              <option value="연차">연차 유급휴가</option>
+              <option value="병가">병가</option>
+              <option value="경조사">경조사 특별휴가</option>
+              <option value="공가">공가/교육</option>
             </select>
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">보상 방식</label>
-            <select
-              value={compType}
-              onChange={(e) => setCompType(e.target.value as any)}
-              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 bg-white"
-            >
-              <option value="OT_PAY">연장/휴일수당 (OT 정산)</option>
-              <option value="SWAP_CREDIT">1:1 맞대근 크레딧 적립</option>
-            </select>
+            <label className="font-bold text-slate-700 block mb-1">신청 사유</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="사유 입력"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs"
+            />
           </div>
         </div>
 
-        {/* Reason Input */}
-        <div className="mb-6">
-          <label className="text-xs font-bold text-slate-700 block mb-1">휴가 사유</label>
-          <input
-            type="text"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="상세 사유 입력"
-            className="w-full text-xs font-medium px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 bg-white"
-          />
-        </div>
+        {requesterShift && (
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600">
+            <div>
+              신청자 원래 근무: <span className="font-black text-brand-700">[{requesterShift.shiftCode}]</span> | 소속 호기: <span className="font-bold">{requesterShift.unit}</span> | 위상: Phase {requesterShift.phase}
+            </div>
+            {requesterShift.shiftCode === 'X' && (
+              <span className="text-rose-600 font-bold flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" /> 신청자가 당일 이미 휴무(X)입니다.
+              </span>
+            )}
+          </div>
+        )}
+      </div>
 
-        {/* Top 3 Recommended Candidates */}
-        <div>
-          <div className="flex items-center space-x-2 mb-3">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              자동 추천 대근자 Top 3 (알고리즘 검증 완료)
+      {/* Top 3 Recommendation Cards */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="w-5 h-5 text-amber-500" />
+            <h3 className="font-extrabold text-slate-900 text-sm">
+              2. 추천 대근자 Top 3 (적합도 점수순)
             </h3>
           </div>
+          <span className="text-xs text-slate-500 font-mono">
+            적격 후보자 {eligibleCandidates.length}명 / 부적격 {disqualified.length}명
+          </span>
+        </div>
 
+        {top3.length === 0 ? (
+          <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed">
+            당일 조건을 만족하는 적격 대근 후보자가 없습니다. (전원 연속근무 초과 또는 역순환 제한)
+          </div>
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {candidates.map((cand, idx) => {
-              const isSelected = selectedReliefSlot === cand.slotNo;
+            {top3.map((c, idx) => {
+              const isSelected = selectedReliefSlot === c.slotNo;
+              const isFirst = idx === 0;
+
               return (
                 <div
-                  key={cand.slotNo}
-                  onClick={() => setSelectedReliefSlot(cand.slotNo)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer relative ${
+                  key={c.slotNo}
+                  onClick={() => setSelectedReliefSlot(c.slotNo)}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
                     isSelected
-                      ? 'border-brand-600 bg-brand-50/60 ring-2 ring-brand-500/20 shadow-md'
-                      : 'border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-slate-50'
+                      ? 'border-brand-600 bg-brand-50/50 shadow-md ring-2 ring-brand-300'
+                      : isFirst
+                      ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400'
+                      : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800">
-                      추천 {idx + 1}순위
-                    </span>
-                    <span className="text-xs font-extrabold text-brand-700">{cand.score}점</span>
-                  </div>
-
-                  <div className="font-extrabold text-sm text-slate-900 mb-1">
-                    {cand.memberName} <span className="text-xs text-slate-400 font-medium">(Slot {cand.slotNo})</span>
-                  </div>
-
-                  <div className="text-[11px] text-slate-500 mb-3">
-                    소속: {cand.unit} | 당일 상태: 휴무(X, Phase {cand.phase})
-                  </div>
-
-                  <div className="space-y-1">
-                    {cand.reasons.map((r, i) => (
-                      <div key={i} className="text-[10px] text-slate-600 flex items-center space-x-1">
-                        <Award className="w-3 h-3 text-amber-500 shrink-0" />
-                        <span>{r}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {isSelected && (
-                    <div className="mt-3 pt-2 border-t border-brand-200 flex items-center justify-end text-brand-700 text-xs font-bold">
-                      <UserCheck className="w-4 h-4 mr-1" />
-                      선택됨
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                          isFirst ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {idx + 1}순위 추천
+                      </span>
+                      <span className="text-base font-black text-brand-700 font-mono">
+                        {c.score}점
+                      </span>
                     </div>
-                  )}
+
+                    <h4 className="text-sm font-extrabold text-slate-900">
+                      Slot {c.slotNo} ({getName(c.slotNo, c.memberName)})
+                    </h4>
+
+                    {/* Breakdown Checklist */}
+                    <div className="mt-3 space-y-1 text-[11px] text-slate-600">
+                      <div className="flex items-center justify-between">
+                        <span>Phase-11 NNN 직후 휴무</span>
+                        <span className={`font-bold ${c.isPhase11 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                          {c.isPhase11 ? '+100점' : '0점'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>동일 호기 소속 보너스</span>
+                        <span className={`font-bold ${c.sameUnit ? 'text-emerald-600' : 'text-slate-400'}`}>
+                          {c.sameUnit ? '+50점' : '0점'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>월간 근무일수 차감</span>
+                        <span className="font-mono text-slate-500">
+                          -{c.scoreBreakdown.shiftPenalty}점 ({c.monthlyShifts}일)
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>누적 대근 횟수 차감</span>
+                        <span className="font-mono text-slate-500">
+                          -{c.scoreBreakdown.reliefPenalty}점 ({c.reliefCount}회)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-500">
+                      {isSelected ? '선택됨' : '클릭하여 선택'}
+                    </span>
+                    <button
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                        isSelected ? 'bg-brand-600 text-white' : 'bg-white border border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      {isSelected ? '선택 완료' : '선택'}
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
-        </div>
+        )}
 
-        {/* Submit Button */}
-        <div className="mt-6 pt-4 border-t flex justify-end">
+        {/* Action Button */}
+        <div className="pt-4 border-t flex items-center justify-between">
+          <div className="text-xs text-slate-500">
+            {selectedReliefSlot ? (
+              <span className="font-bold text-brand-700">
+                선택된 대근자: Slot {selectedReliefSlot} ({getName(selectedReliefSlot, candidates.find((c) => c.slotNo === selectedReliefSlot)?.memberName || '')})
+              </span>
+            ) : (
+              '대근자를 선택해 주세요.'
+            )}
+          </div>
           <button
             onClick={handleConfirm}
             disabled={!selectedReliefSlot}
-            className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center space-x-2"
+            className="px-5 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 disabled:opacity-40 disabled:pointer-events-none shadow-sm flex items-center gap-1.5"
           >
-            <UserCheck className="w-4 h-4" />
-            <span>대근 요청 확정 (근무표 반영)</span>
+            <Check className="w-4 h-4" /> 대근 확정 및 근무표 반영
           </button>
         </div>
       </div>
+
+      {/* Disqualified Candidates Inspection (Section 5.1 Hard Constraint Filter) */}
+      {disqualified.length > 0 && (
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+          <h4 className="text-xs font-extrabold text-slate-700 mb-2 flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4 text-rose-500" />
+            제외된 부적격 후보자 내역 (Hard Constraint 차단)
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {disqualified.map((d) => (
+              <div key={d.slotNo} className="p-2.5 bg-rose-50/50 border border-rose-100 rounded-lg text-xs">
+                <span className="font-bold text-slate-900 block">
+                  Slot {d.slotNo} ({getName(d.slotNo, d.memberName)})
+                </span>
+                <span className="text-[11px] text-rose-700 block mt-0.5">
+                  사유: {d.disqualificationReason}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

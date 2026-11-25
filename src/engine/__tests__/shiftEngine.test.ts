@@ -215,4 +215,56 @@ describe('RadShift_K34 Deterministic Shift Engine Tests', () => {
       expect(slot9.unit).toBe('FLOAT');
     });
   });
+
+  describe('Section 5 & 6 Modules: Validator, Relief, Queue, Simulator, Bot, Diagnostics', () => {
+    it('should validate 9-cell circular queue rotateRight(Q, 1)', async () => {
+      const { rotateQueueRight, INITIAL_QUEUE_NAMES } = await import('../scenarioEngine');
+      const rotated = rotateQueueRight(INITIAL_QUEUE_NAMES, 1);
+      expect(rotated[0]).toBe('송명관');
+      expect(rotated[1]).toBe('최창호');
+      expect(rotated[4]).toBe('임원택');
+    });
+
+    it('should accurately calculate Top 3 relief candidates with Section 5.3 scoring', async () => {
+      const { calculateReliefCandidates } = await import('../reliefEngine');
+      const schedule = engine.generateSchedule('2027-01-01', '2027-01-31');
+      const candidates = calculateReliefCandidates(schedule, '2027-01-15', 3);
+      expect(candidates.length).toBeGreaterThan(0);
+      const eligible = candidates.filter((c) => c.isEligible);
+      expect(eligible.length).toBeGreaterThan(0);
+      expect(eligible[0].score).toBeGreaterThanOrEqual(eligible[1].score);
+    });
+
+    it('should detect quick return violations in validateProposedCellChange', async () => {
+      const { validateProposedCellChange } = await import('../constraintValidator');
+      const schedule = engine.generateSchedule('2026-01-01', '2026-01-10');
+      // Slot 2 worked N on 2026-01-01. Assigning D on 2026-01-02 must fail.
+      const res = validateProposedCellChange(schedule, '2026-01-02', 2, 'D');
+      expect(res.isValid).toBe(false);
+      expect(res.hardViolations.some((v) => v.includes('역순환'))).toBe(true);
+    });
+
+    it('should execute telegram bot dispatcher commands', async () => {
+      const { handleTelegramCommand } = await import('../telegramDispatcher');
+      const schedule = engine.generateSchedule('2026-01-01', '2026-01-31');
+      const todayMsg = handleTelegramCommand('/오늘', schedule);
+      expect(todayMsg.text).toContain('3호기');
+      expect(todayMsg.text).toContain('4호기');
+
+      const reliefMsg = handleTelegramCommand('/대근요청 2026-01-15', schedule);
+      expect(reliefMsg.buttons).toBeDefined();
+    });
+
+    it('should pass all 10 suites in One-Step Diagnostic Test Runner', async () => {
+      const { runAllDiagnostics } = await import('../testRunner');
+      const rep = await runAllDiagnostics(engine);
+      const failed = rep.results.filter((r) => !r.isPassed);
+      if (failed.length > 0) {
+        console.error('FAILED DIAGNOSTICS:', JSON.stringify(failed, null, 2));
+      }
+      expect(rep.totalTests).toBe(10);
+      expect(rep.passedTests).toBe(10);
+      expect(rep.failedTests).toBe(0);
+    });
+  });
 });

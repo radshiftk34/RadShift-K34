@@ -10,7 +10,9 @@ export type ShiftCode =
   | '3D*'
   | '4D*'
   | '일근'
-  | '3N';
+  | '3N'
+  | '연차'
+  | '대근';
 
 export interface ShiftCell {
   slotNo: number; // 1 to 9 (or 10 for support)

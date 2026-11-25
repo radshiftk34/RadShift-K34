@@ -1,6 +1,17 @@
 import React from 'react';
 import { UserRole } from '../services/supabaseClient';
-import { Calendar, Shield, Users, Download, Eye, EyeOff, Bot, Sliders } from 'lucide-react';
+import {
+  Calendar,
+  Shield,
+  Users,
+  Download,
+  Eye,
+  EyeOff,
+  Bot,
+  Sliders,
+  Cpu,
+  RotateCw,
+} from 'lucide-react';
 
 interface HeaderProps {
   currentRole: UserRole;
@@ -39,19 +50,23 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-slate-900 tracking-tight text-lg">RadShift_K34</span>
+                <span className="font-extrabold text-slate-900 tracking-tight text-lg">
+                  RadShift_K34
+                </span>
                 <button
                   onClick={onOpenVersionModal}
-                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors"
+                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
                   title="버전 정보 및 업데이트 내역 보기"
                 >
-                  v1.0.0
+                  v1.1.0
                 </button>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
                   {year === 2026 ? '2026 정상 9인' : '2027 8+1 지원'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">한수원 고리 3,4호기 방사선관리(HP) 교대근무 관리 시스템</p>
+              <p className="text-xs text-slate-500 hidden sm:block">
+                한수원 고리 3,4호기 방사선관리(HP) 교대근무 관리 시스템
+              </p>
             </div>
           </div>
 
@@ -62,7 +77,9 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={() => onYearChange(2026)}
                 className={`px-2.5 py-1 rounded-md transition-all ${
-                  year === 2026 ? 'bg-white text-brand-700 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
+                  year === 2026
+                    ? 'bg-white text-brand-700 shadow-sm font-semibold'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 2026년
@@ -70,7 +87,9 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={() => onYearChange(2027)}
                 className={`px-2.5 py-1 rounded-md transition-all ${
-                  year === 2027 ? 'bg-white text-brand-700 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
+                  year === 2027
+                    ? 'bg-white text-brand-700 shadow-sm font-semibold'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 2027년 (8+1)
@@ -82,13 +101,19 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onToggleAnonymize}
               className={`p-2 rounded-lg text-xs font-medium border flex items-center space-x-1 transition-colors ${
                 anonymize
-                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  ? 'bg-purple-50 text-purple-700 border-purple-200'
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
               title={anonymize ? '실명으로 보기' : '슬롯코드로 익명화 보기'}
             >
-              {anonymize ? <EyeOff className="w-4 h-4 text-amber-600" /> : <Eye className="w-4 h-4 text-slate-500" />}
-              <span className="hidden md:inline">{anonymize ? '익명(HP-01)' : '실명 표시'}</span>
+              {anonymize ? (
+                <EyeOff className="w-4 h-4 text-purple-600" />
+              ) : (
+                <Eye className="w-4 h-4 text-slate-500" />
+              )}
+              <span className="hidden md:inline">
+                {anonymize ? '익명(HP-01)' : '실명 표시'}
+              </span>
             </button>
 
             {/* Excel Download Button */}
@@ -102,9 +127,12 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Role Switcher */}
             <div className="flex items-center space-x-1 bg-slate-100 rounded-lg p-1 text-xs">
-              <span className="text-slate-500 text-[10px] uppercase font-bold px-1.5 hidden lg:inline">권한:</span>
+              <span className="text-slate-500 text-[10px] uppercase font-bold px-1.5 hidden lg:inline">
+                권한:
+              </span>
               {(['L1_VIEWER', 'L2_HP', 'L3_ADMIN'] as UserRole[]).map((r) => {
-                const label = r === 'L1_VIEWER' ? 'L1 뷰어' : r === 'L2_HP' ? 'L2 HP' : 'L3 관리자';
+                const label =
+                  r === 'L1_VIEWER' ? 'L1 뷰어' : r === 'L2_HP' ? 'L2 HP' : 'L3 관리자';
                 const isActive = currentRole === r;
                 return (
                   <button
@@ -127,13 +155,21 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <nav className="flex space-x-1 sm:space-x-4 border-t border-slate-100 overflow-x-auto py-2">
+        <nav className="flex space-x-1 sm:space-x-3 border-t border-slate-100 overflow-x-auto py-2">
           {[
             { id: 'dashboard', label: '오늘/내일 대시보드', icon: Calendar },
-            { id: 'matrix', label: '월간 근무표 편집기', icon: Sliders },
-            { id: 'leave', label: '휴가·대근 신청 / 추천', icon: Users, badge: 'Top 3' },
-            { id: 'scenario', label: '2026 vs 2027 비교 & 8+1', icon: Shield },
+            { id: 'matrix', label: '월간 근무표 (2-Layer)', icon: Sliders },
+            { id: 'leave', label: '휴가·대근 관리', icon: Users, badge: 'Top 3' },
+            { id: 'scenario', label: '시뮬레이터 (원형 큐)', icon: RotateCw },
             { id: 'telegram', label: '텔레그램 봇 연동', icon: Bot },
+            { id: 'members', label: '인원 및 권한 (RBAC)', icon: Shield },
+            {
+              id: 'onestep-test',
+              label: '원스텝 종합 진단',
+              icon: Cpu,
+              badge: '10종 전수',
+              highlight: true,
+            },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -141,16 +177,28 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`flex items-center space-x-2 py-1.5 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`flex items-center space-x-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-brand-50 text-brand-700 shadow-sm'
+                    ? tab.highlight
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'bg-brand-50 text-brand-700 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-brand-600' : 'text-slate-400'}`} />
+                <Icon
+                  className={`w-4 h-4 ${
+                    isActive ? (tab.highlight ? 'text-white' : 'text-brand-600') : 'text-slate-400'
+                  }`}
+                />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-brand-100 text-brand-800 font-bold">
+                  <span
+                    className={`px-1.5 py-0.5 text-[10px] rounded-full font-bold ${
+                      isActive && tab.highlight
+                        ? 'bg-purple-700 text-purple-100'
+                        : 'bg-brand-100 text-brand-800'
+                    }`}
+                  >
                     {tab.badge}
                   </span>
                 )}
