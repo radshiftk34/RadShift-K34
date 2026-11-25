@@ -1,12 +1,24 @@
 {
-  "version": "1.5.7",
+  "version": "1.5.8",
   "releaseDate": "2026-11-26",
-  "buildNumber": 19,
+  "buildNumber": 20,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.8",
+      "date": "2026-11-26",
+      "build": 20,
+      "title": "연간 근무표 UI 깨짐 개선 및 비고(운영 특이사항) 행 분할선 제거",
+      "notes": [
+        "호기 정보('3호기', '4호기', '지원')가 세로 3줄로 깨져 표시되던 현상을 whitespace-nowrap 및 최적 너비 설정으로 한 줄 온전 표출 해결",
+        "31일 교대근무표의 모든 정보(호기, 성명, 1~31일, 비고)가 가로 스크롤 없이 한 화면에 온전히 표시되도록 레이아웃 및 너비 최적화",
+        "비고(운영 특이사항) 열에 행마다 표시되던 가로 분할선(줄)을 완전히 제거하고, 월 전체 인원 행을 하나로 통합(rowSpan)하여 깔끔하게 표시",
+        "대화면 모니터 환경에 맞춰 메인 및 헤더 컨테이너 최대 너비를 1780px로 확장"
+      ]
+    },
     {
       "version": "1.5.7",
       "date": "2026-11-26",

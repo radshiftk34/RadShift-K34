@@ -128,7 +128,7 @@ export default function App() {
       />
 
       {/* Main Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-[1780px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'matrix' && (
           <MonthlyMatrix
             schedule={activeSchedule}
@@ -213,7 +213,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+        <div className="max-w-[1780px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
           <div>
             <span className="font-semibold text-slate-700">RadShift_K34</span> | 한국수력원자력 고리 3,4호기 HP 교대근무 관리 시스템
             {currentRole === 'L3_ADMIN' && (

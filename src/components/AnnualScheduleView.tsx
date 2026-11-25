@@ -326,14 +326,14 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
 
               {/* Table Container */}
               <div className="overflow-x-auto">
-                <table className="min-w-full text-xs divide-y divide-slate-200 border-collapse">
+                <table className="w-full text-xs divide-y divide-slate-200 border-collapse table-auto">
                   <thead>
                     {/* Row 1: Day numbers */}
                     <tr className="bg-[#ccfbf1]/50 text-slate-800">
-                      <th className="sticky left-0 z-20 bg-[#ccfbf1] px-2 py-1.5 text-center font-bold w-12 border-r border-slate-300">
+                      <th className="px-1.5 py-1.5 text-center font-bold w-14 min-w-[54px] whitespace-nowrap border-r border-slate-300">
                         호기
                       </th>
-                      <th className="sticky left-12 z-20 bg-[#ccfbf1] px-3 py-1.5 text-left font-bold w-28 border-r border-slate-300 shadow-xs">
+                      <th className="px-2 py-1.5 text-left font-bold w-16 sm:w-20 min-w-[62px] whitespace-nowrap border-r border-slate-300">
                         성명
                       </th>
                       {m.days.map((dayNum, idx) => {
@@ -343,7 +343,7 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                         return (
                           <th
                             key={dayNum}
-                            className={`px-1 py-1 text-center font-extrabold min-w-[30px] border-r border-slate-200 ${
+                            className={`px-0.5 py-1 text-center font-extrabold w-7 min-w-[24px] max-w-[28px] border-r border-slate-200 ${
                               isSunday
                                 ? 'bg-red-100/70 text-red-700'
                                 : isWeekend
@@ -355,17 +355,17 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                           </th>
                         );
                       })}
-                      <th className="px-4 py-1.5 text-left font-bold bg-[#ccfbf1] text-slate-800 border-l border-slate-300 min-w-[280px]">
+                      <th className="px-3 py-1.5 text-left font-bold bg-[#ccfbf1] text-slate-800 border-l border-slate-300 min-w-[160px] w-auto">
                         비 고
                       </th>
                     </tr>
 
                     {/* Row 2: Days of Week */}
                     <tr className="bg-[#ccfbf1]/30 text-slate-700 border-b border-slate-300">
-                      <th className="sticky left-0 z-20 bg-[#ccfbf1]/40 px-2 py-1 text-center font-semibold text-[11px] border-r border-slate-300">
+                      <th className="px-1.5 py-1 text-center font-semibold text-[11px] w-14 min-w-[54px] whitespace-nowrap border-r border-slate-300">
                         -
                       </th>
-                      <th className="sticky left-12 z-20 bg-[#ccfbf1]/40 px-3 py-1 text-left font-semibold text-[11px] border-r border-slate-300 shadow-xs">
+                      <th className="px-2 py-1 text-left font-semibold text-[11px] w-16 sm:w-20 min-w-[62px] whitespace-nowrap border-r border-slate-300">
                         요일
                       </th>
                       {m.dows.map((dow, idx) => {
@@ -374,7 +374,7 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                         return (
                           <th
                             key={idx}
-                            className={`px-1 py-1 text-center font-bold text-[11px] border-r border-slate-200 ${
+                            className={`px-0.5 py-1 text-center font-bold text-[10px] sm:text-[11px] w-7 min-w-[24px] max-w-[28px] border-r border-slate-200 ${
                               isSunday
                                 ? 'text-red-600 bg-red-50'
                                 : isSaturday
@@ -386,7 +386,7 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                           </th>
                         );
                       })}
-                      <th className="px-4 py-1 text-left font-semibold text-[11px] bg-[#ccfbf1]/40 text-slate-600 border-l border-slate-300">
+                      <th className="px-3 py-1 text-left font-semibold text-[11px] bg-[#ccfbf1]/40 text-slate-600 border-l border-slate-300">
                         운영 특이사항
                       </th>
                     </tr>
@@ -424,20 +424,20 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                           className="hover:bg-slate-50/70 transition-colors"
                         >
                           {/* Unit Cell */}
-                          <td className="sticky left-0 z-10 bg-white px-2 py-1 text-center font-bold border-r border-slate-200">
+                          <td className="px-1.5 py-1 text-center font-bold border-r border-slate-200 whitespace-nowrap w-14 min-w-[54px]">
                             <span
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-black border ${unitBadgeStyle}`}
+                              className={`inline-block whitespace-nowrap px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-black border ${unitBadgeStyle}`}
                             >
                               {unitLabel}
                             </span>
                           </td>
 
                           {/* Name Cell */}
-                          <td className="sticky left-12 z-10 bg-white px-3 py-1 font-bold text-slate-900 border-r border-slate-200 whitespace-nowrap shadow-xs">
-                            <div className="flex items-center space-x-1.5">
-                              <span className="text-xs">{displayName}</span>
+                          <td className="px-2 py-1 font-bold text-slate-900 border-r border-slate-200 whitespace-nowrap w-16 sm:w-20 min-w-[62px]">
+                            <div className="flex items-center space-x-1 whitespace-nowrap">
+                              <span className="text-xs font-bold tracking-tight">{displayName}</span>
                               {mem.name.includes('지원') && (
-                                <span className="text-[10px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">
+                                <span className="text-[10px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold whitespace-nowrap">
                                   일근
                                 </span>
                               )}
@@ -454,7 +454,7 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                             return (
                               <td
                                 key={sIdx}
-                                className={`px-0.5 py-1 text-center border-r border-slate-200 ${
+                                className={`px-0 py-0.5 text-center border-r border-slate-200 ${
                                   isSunday
                                     ? 'bg-red-50/20'
                                     : isSaturday
@@ -464,12 +464,12 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                               >
                                 {code ? (
                                   <span
-                                    className={`inline-block w-6 h-6 leading-6 rounded-md text-[11px] font-black border ${badgeStyle}`}
+                                    className={`inline-block w-5.5 h-5.5 sm:w-6 sm:h-6 leading-[22px] sm:leading-6 rounded-md text-[10px] sm:text-[11px] font-black border ${badgeStyle}`}
                                   >
                                     {code}
                                   </span>
                                 ) : (
-                                  <span className="inline-block w-6 h-6 leading-6 text-slate-300 text-[10px]">
+                                  <span className="inline-block w-5.5 h-5.5 sm:w-6 sm:h-6 leading-[22px] sm:leading-6 text-slate-300 text-[10px]">
                                     -
                                   </span>
                                 )}
@@ -477,14 +477,28 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                             );
                           })}
 
-                          {/* Remark (only for first row or per row) */}
-                          <td className="px-3 py-1 text-left text-[11px] text-slate-600 border-l border-slate-200">
-                            {memIdx === 0 && m.remark && (
-                              <div className="whitespace-pre-line text-amber-900 font-medium">
-                                {m.remark}
-                              </div>
-                            )}
-                          </td>
+                          {/* Remark: Rowspanned for the entire month, zero horizontal dividing lines */}
+                          {memIdx === 0 && (
+                            <td
+                              rowSpan={m.members.length}
+                              className="px-3 py-2 text-left text-[11px] text-slate-700 align-top border-l border-slate-300 bg-white"
+                            >
+                              {m.remark ? (
+                                <div className="space-y-1 text-amber-900 font-medium leading-relaxed">
+                                  {m.remark
+                                    .split('\n')
+                                    .filter(Boolean)
+                                    .map((line, lIdx) => (
+                                      <div key={lIdx} className="leading-tight">
+                                        {line}
+                                      </div>
+                                    ))}
+                                </div>
+                              ) : (
+                                <span className="text-slate-300">-</span>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
