@@ -5,14 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start:local": "powershell -ExecutionPolicy Bypass -File ./scripts/start-local.ps1",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "release": "node scripts/release.mjs auto",
-    "release:patch": "node scripts/release.mjs patch",
-    "release:minor": "node scripts/release.mjs minor",
-    "release:major": "node scripts/release.mjs major"
+    "version:tool": "node scripts/version-manager.mjs",
+    "push": "node scripts/version-manager.mjs push",
+    "restore": "node scripts/version-manager.mjs restore",
+    "release": "node scripts/version-manager.mjs bump",
+    "release:patch": "node scripts/version-manager.mjs bump patch",
+    "release:minor": "node scripts/version-manager.mjs bump minor",
+    "release:major": "node scripts/version-manager.mjs bump major",
+    "release:push": "node scripts/version-manager.mjs release-push"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
