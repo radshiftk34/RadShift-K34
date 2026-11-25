@@ -1,0 +1,16 @@
+{
+  "name": "한수원 HP 교대근무 관리(고리3,4호기)",
+  "short_name": "RadShift_K34",
+  "description": "한수원 고리 3,4호기 방사선관리(HP) 교대근무 관리 및 스케줄링 시스템",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1648d6",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
