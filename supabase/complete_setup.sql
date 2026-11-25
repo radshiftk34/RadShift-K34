@@ -49,12 +49,12 @@ create table public.rotation_slots (
   telegram_id text,
   email text,
   work_start_date date not null default '2026-01-01',
-  work_end_date date default '2027-12-31',
+  work_end_date date default '9999-12-31',
   termination_reason text default '재직중 (정상 근무)',
   status text not null default '재직중',
   note text,
   updated_at timestamptz not null default now(),
-  primary key (slot_no, member_name)
+  primary key (slot_no, work_start_date)
 );
 
 -- 3) scenarios: 8+1 지원조 및 9인 운영 시나리오 설정
@@ -139,17 +139,17 @@ create table public.audit_logs (
 -- 초기 기초 데이터 (Seed Data)
 -- ==============================================================================
 
--- 1) 슬롯 1~9 초기 데이터 (1~4: 3호기, 5~9: 4호기)
+-- 1) 슬롯 1~9 초기 데이터 (1~4: 3호기, 5~9: 4호기, 기본 종료일 9999-12-31)
 insert into public.rotation_slots (slot_no, unit, member_name, phone, telegram_id, email, work_start_date, work_end_date, termination_reason, status) values
-  (1, '3호기', '신욱제', '010-3841-1008', '@shin_hp', 'shin@khnp.co.kr', '2026-01-01', '2027-12-31', '재직중 (정상 근무)', '재직중'),
-  (2, '3호기', '손정기', '010-5923-2002', '@son_hp', 'son@khnp.co.kr', '2026-01-01', '2027-12-31', '재직중 (정상 근무)', '재직중'),
-  (3, '3호기', '박경욱', '010-8274-3003', '@park_hp', 'park@khnp.co.kr', '2026-01-01', '2027-12-31', '재직중 (정상 근무)', '재직중'),
-  (4, '3호기', '임원택', '010-4491-4004', '@lim_hp', 'lim@khnp.co.kr', '2026-01-01', '2027-12-31', '재직중 (정상 근무)', '재직중'),
-  (5, '4호기', '박상현', '010-7712-5005', '@park_sh', 'park_sh@khnp.co.kr', '2027-01-01', '2027-12-31', '2027-01-01 나상흠 후임 임피 교체', '임금피크'),
-  (6, '4호기', '권재호', '010-6318-6006', '@kwon_hp', 'kwon@khnp.co.kr', '2026-01-01', '2027-12-31', '재직중 (정상 근무)', '재직중'),
-  (7, '4호기', '이근현', '010-9182-7007', '@lee_hp', 'lee@khnp.co.kr', '2026-01-01', '2027-12-31', '재직중 (정상 근무)', '재직중'),
-  (8, '4호기', '이재겸', '010-3841-8008', '@lee_jk', 'lee_jk@khnp.co.kr', '2027-03-08', '2027-12-31', '2027-03-08 결원위치 신규 투입', '재직중'),
-  (9, '4호기', '송명관', '010-2234-9009', '@song_hp', 'song@khnp.co.kr', '2026-01-01', '2027-12-31', '재직중 (정상 근무 / 통상Day)', '재직중');
+  (1, '3호기', '신욱제', '010-3841-1008', '@shin_hp', 'shin@khnp.co.kr', '2026-01-01', '9999-12-31', '재직중 (정상 근무)', '재직중'),
+  (2, '3호기', '손정기', '010-5923-2002', '@son_hp', 'son@khnp.co.kr', '2026-01-01', '9999-12-31', '재직중 (정상 근무)', '재직중'),
+  (3, '3호기', '박경욱', '010-8274-3003', '@park_hp', 'park@khnp.co.kr', '2026-01-01', '9999-12-31', '재직중 (정상 근무)', '재직중'),
+  (4, '3호기', '임원택', '010-4491-4004', '@lim_hp', 'lim@khnp.co.kr', '2026-01-01', '9999-12-31', '재직중 (정상 근무)', '재직중'),
+  (5, '4호기', '박상현', '010-7712-5005', '@park_sh', 'park_sh@khnp.co.kr', '2027-01-01', '9999-12-31', '2027-01-01 나상흠(퇴직) 후임 임피 교체', '임금피크'),
+  (6, '4호기', '권재호', '010-6318-6006', '@kwon_hp', 'kwon@khnp.co.kr', '2026-01-01', '9999-12-31', '재직중 (정상 근무)', '재직중'),
+  (7, '4호기', '이근현', '010-9182-7007', '@lee_hp', 'lee@khnp.co.kr', '2026-01-01', '9999-12-31', '재직중 (정상 근무)', '재직중'),
+  (8, '4호기', '이재겸', '010-3841-8008', '@lee_jk', 'lee_jk@khnp.co.kr', '2027-03-08', '9999-12-31', '2027-03-08 결원위치 신규 투입', '재직중'),
+  (9, '4호기', '송명관', '010-2234-9009', '@song_hp', 'song@khnp.co.kr', '2026-01-01', '9999-12-31', '재직중 (정상 근무 / 통상Day)', '재직중');
 
 -- 2) 2027년 확정 시나리오
 insert into public.scenarios (name, mode, start_date, end_date, vacant_slot_no, temp_cover_slot_no, support_name, support_department, support_start_date, support_end_date, is_active) values
@@ -183,9 +183,19 @@ insert into public.holidays (holiday_date, name, is_substitute, year) values
   ('2027-12-27', '성탄절 대체공휴일', true, 2027);
 
 -- ==============================================================================
--- 보안 정책 (Row Level Security): 웹앱 및 교대근무자 전원 조회 및 관리자 수정 허용
+-- 권한 및 보안 정책 (Row Level Security): 웹앱 및 교대근무자 전원 조회 및 관리자 수정 허용
 -- ==============================================================================
 
+-- 1) 테이블 기본 권한 부여 (Supabase anon, authenticated 역할)
+grant usage on schema public to anon, authenticated;
+grant all on all tables in schema public to anon, authenticated;
+grant all on all sequences in schema public to anon, authenticated;
+grant all on all routines in schema public to anon, authenticated;
+alter default privileges in schema public grant all on tables to anon, authenticated;
+alter default privileges in schema public grant all on sequences to anon, authenticated;
+alter default privileges in schema public grant all on routines to anon, authenticated;
+
+-- 2) RLS 활성화
 alter table public.profiles enable row level security;
 alter table public.rotation_slots enable row level security;
 alter table public.scenarios enable row level security;
@@ -196,19 +206,45 @@ alter table public.credit_ledger enable row level security;
 alter table public.audit_logs enable row level security;
 
 -- 조회 정책: 웹앱을 사용하는 교대근무자 및 뷰어는 근무표 및 슬롯 조회 허용
+drop policy if exists "Allow read profiles" on public.profiles;
 create policy "Allow read profiles" on public.profiles for select using (true);
+
+drop policy if exists "Allow read rotation_slots" on public.rotation_slots;
 create policy "Allow read rotation_slots" on public.rotation_slots for select using (true);
+
+drop policy if exists "Allow read scenarios" on public.scenarios;
 create policy "Allow read scenarios" on public.scenarios for select using (true);
+
+drop policy if exists "Allow read holidays" on public.holidays;
 create policy "Allow read holidays" on public.holidays for select using (true);
+
+drop policy if exists "Allow read shift_overrides" on public.shift_overrides;
 create policy "Allow read shift_overrides" on public.shift_overrides for select using (true);
+
+drop policy if exists "Allow read leave_relief_requests" on public.leave_relief_requests;
 create policy "Allow read leave_relief_requests" on public.leave_relief_requests for select using (true);
+
+drop policy if exists "Allow read credit_ledger" on public.credit_ledger;
 create policy "Allow read credit_ledger" on public.credit_ledger for select using (true);
+
+drop policy if exists "Allow read audit_logs" on public.audit_logs;
 create policy "Allow read audit_logs" on public.audit_logs for select using (true);
 
 -- 수정/저장 정책: 웹앱 연동 키(anon key)를 통한 원활한 동기화 허용
+drop policy if exists "Allow write rotation_slots" on public.rotation_slots;
 create policy "Allow write rotation_slots" on public.rotation_slots for all using (true) with check (true);
+
+drop policy if exists "Allow write shift_overrides" on public.shift_overrides;
 create policy "Allow write shift_overrides" on public.shift_overrides for all using (true) with check (true);
+
+drop policy if exists "Allow write holidays" on public.holidays;
 create policy "Allow write holidays" on public.holidays for all using (true) with check (true);
+
+drop policy if exists "Allow write scenarios" on public.scenarios;
 create policy "Allow write scenarios" on public.scenarios for all using (true) with check (true);
+
+drop policy if exists "Allow write leave_relief_requests" on public.leave_relief_requests;
 create policy "Allow write leave_relief_requests" on public.leave_relief_requests for all using (true) with check (true);
+
+drop policy if exists "Allow write audit_logs" on public.audit_logs;
 create policy "Allow write audit_logs" on public.audit_logs for all using (true) with check (true);

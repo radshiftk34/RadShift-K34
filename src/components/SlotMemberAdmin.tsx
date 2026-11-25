@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { UserRole } from '../services/supabaseClient';
 import { Holiday } from '../engine/types';
 import {
@@ -7,6 +7,7 @@ import {
 } from '../engine/holidays';
 import { runScenarioSimulation } from '../engine/scenarioEngine';
 import { ShiftEngine } from '../engine/shiftEngine';
+import { seedAllMasterDataToDb } from '../services/dbSyncService';
 import {
   Shield,
   Users,
@@ -23,19 +24,22 @@ import {
   Mail,
   PlayCircle,
   Lock,
+  Database,
+  UserPlus,
 } from 'lucide-react';
 
 export interface SlotMemberData {
+  id: string; // unique ID
   slotNo: number; // 1 to 9
   unit: '3호기' | '4호기';
   name: string;
   phone: string;
   telegramId: string;
   email: string;
-  workStartDate: string;
-  workEndDate: string;
+  workStartDate: string; // YYYY-MM-DD
+  workEndDate: string; // YYYY-MM-DD (기본: 9999-12-31)
   terminationReason: string;
-  status: '재직중' | '교체완료' | '임금피크' | '결원';
+  status: '재직중' | '교체완료' | '임금피크' | '퇴직' | '결원';
   role: UserRole;
   accountStatus: 'approved' | 'pending' | 'rejected';
 }
@@ -55,7 +59,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
   year,
   onCommitSchedule,
 }) => {
-  // Access Control Guard
+  // Access Control Guard: Only L3_ADMIN
   if (currentRole !== 'L3_ADMIN') {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-2xl mx-auto my-12 space-y-4">
@@ -75,14 +79,49 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     );
   }
 
-  // Active Sub-Tab: 'slots' | 'eight_plus' | 'holidays' | 'simulate' | 'audit'
+  // Active Sub-Tab
   const [activeSubTab, setActiveSubTab] = useState<
-    'slots' | 'eight_plus' | 'holidays' | 'simulate' | 'audit'
+    'slots' | 'eight_plus' | 'holidays' | 'simulate'
   >('slots');
 
-  // 1. 9 Slots Configuration State (1~4: 3호기, 5~9: 4호기)
-  const [slots, setSlots] = useState<SlotMemberData[]>([
+  // ---------------------------------------------------------------------------
+  // 1. 기준일(Target Date) & 84일 주기 연동 상태
+  // ---------------------------------------------------------------------------
+  const [targetDate, setTargetDate] = useState<string>(`${year}-01-01`);
+
+  // Calculate 84-day cycle start & end based on targetDate
+  // Anchor = 2025-12-29 (Monday, d = 0)
+  const cycleInfo = useMemo(() => {
+    const anchor = new Date('2025-12-29T00:00:00Z');
+    const target = new Date(targetDate + 'T00:00:00Z');
+    const diffMs = target.getTime() - anchor.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const cycleNum = Math.floor(diffDays / 84); // 0, 1, 2, ...
+    const startOffsetDays = cycleNum * 84;
+    const endOffsetDays = startOffsetDays + 83;
+
+    const startDate = new Date(anchor.getTime() + startOffsetDays * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const endDate = new Date(anchor.getTime() + endOffsetDays * 86400000)
+      .toISOString()
+      .slice(0, 10);
+
+    return {
+      cycleNum: cycleNum + 1, // 1차, 2차...
+      startDate,
+      endDate,
+      diffDays,
+      shiftSteps: ((cycleNum % 9) + 9) % 9,
+    };
+  }, [targetDate]);
+
+  // ---------------------------------------------------------------------------
+  // 2. 슬롯 및 인원 관리 (기본 시작일 2026-01-01, 종료일 9999-12-31)
+  // ---------------------------------------------------------------------------
+  const [members, setMembers] = useState<SlotMemberData[]>([
     {
+      id: 'm-1',
       slotNo: 1,
       unit: '3호기',
       name: '신욱제',
@@ -90,13 +129,14 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       telegramId: '@shin_hp',
       email: 'shin@khnp.co.kr',
       workStartDate: '2026-01-01',
-      workEndDate: '2027-12-31',
+      workEndDate: '9999-12-31',
       terminationReason: '재직중 (정상 근무)',
       status: '재직중',
       role: 'L2_HP',
       accountStatus: 'approved',
     },
     {
+      id: 'm-2',
       slotNo: 2,
       unit: '3호기',
       name: '손정기',
@@ -104,13 +144,14 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       telegramId: '@son_hp',
       email: 'son@khnp.co.kr',
       workStartDate: '2026-01-01',
-      workEndDate: '2027-12-31',
+      workEndDate: '9999-12-31',
       terminationReason: '재직중 (정상 근무)',
       status: '재직중',
       role: 'L2_HP',
       accountStatus: 'approved',
     },
     {
+      id: 'm-3',
       slotNo: 3,
       unit: '3호기',
       name: '박경욱',
@@ -118,13 +159,14 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       telegramId: '@park_hp',
       email: 'park@khnp.co.kr',
       workStartDate: '2026-01-01',
-      workEndDate: '2027-12-31',
+      workEndDate: '9999-12-31',
       terminationReason: '재직중 (정상 근무)',
       status: '재직중',
       role: 'L1_VIEWER',
       accountStatus: 'approved',
     },
     {
+      id: 'm-4',
       slotNo: 4,
       unit: '3호기',
       name: '임원택',
@@ -132,27 +174,29 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       telegramId: '@lim_hp',
       email: 'lim@khnp.co.kr',
       workStartDate: '2026-01-01',
-      workEndDate: '2027-12-31',
+      workEndDate: '9999-12-31',
       terminationReason: '재직중 (정상 근무)',
       status: '재직중',
       role: 'L2_HP',
       accountStatus: 'approved',
     },
     {
+      id: 'm-5',
       slotNo: 5,
       unit: '4호기',
       name: '박상현',
       phone: '010-7712-5005',
       telegramId: '@park_sh',
       email: 'park_sh@khnp.co.kr',
-      workStartDate: '2027-01-01',
-      workEndDate: '2027-12-31',
-      terminationReason: '2027-01-01 나상흠(퇴직) 후임 임피 교체',
+      workStartDate: '2026-01-01',
+      workEndDate: '9999-12-31',
+      terminationReason: '재직중 (2027-01-01 나상흠 후임 임피 교체)',
       status: '임금피크',
       role: 'L1_VIEWER',
       accountStatus: 'approved',
     },
     {
+      id: 'm-6',
       slotNo: 6,
       unit: '4호기',
       name: '권재호',
@@ -160,13 +204,14 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       telegramId: '@kwon_hp',
       email: 'kwon@khnp.co.kr',
       workStartDate: '2026-01-01',
-      workEndDate: '2027-12-31',
+      workEndDate: '9999-12-31',
       terminationReason: '재직중 (정상 근무)',
       status: '재직중',
       role: 'L1_VIEWER',
       accountStatus: 'approved',
     },
     {
+      id: 'm-7',
       slotNo: 7,
       unit: '4호기',
       name: '이근현',
@@ -174,27 +219,29 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       telegramId: '@lee_hp',
       email: 'lee@khnp.co.kr',
       workStartDate: '2026-01-01',
-      workEndDate: '2027-12-31',
+      workEndDate: '9999-12-31',
       terminationReason: '재직중 (정상 근무)',
       status: '재직중',
       role: 'L1_VIEWER',
       accountStatus: 'approved',
     },
     {
+      id: 'm-8',
       slotNo: 8,
       unit: '4호기',
       name: '이재겸',
       phone: '010-3841-8008',
       telegramId: '@lee_jk',
       email: 'lee_jk@khnp.co.kr',
-      workStartDate: '2027-03-08',
-      workEndDate: '2027-12-31',
-      terminationReason: '2027-03-08 결원위치 신규 투입',
+      workStartDate: '2026-01-01',
+      workEndDate: '9999-12-31',
+      terminationReason: '재직중 (2027-03-08 결원위치 신규 투입)',
       status: '재직중',
       role: 'L1_VIEWER',
       accountStatus: 'approved',
     },
     {
+      id: 'm-9',
       slotNo: 9,
       unit: '4호기',
       name: '송명관',
@@ -202,7 +249,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       telegramId: '@song_hp',
       email: 'song@khnp.co.kr',
       workStartDate: '2026-01-01',
-      workEndDate: '2027-12-31',
+      workEndDate: '9999-12-31',
       terminationReason: '재직중 (정상 근무 / 통상Day)',
       status: '재직중',
       role: 'L3_ADMIN',
@@ -210,21 +257,191 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     },
   ]);
 
-  // Editing Slot Modal
-  const [editingSlot, setEditingSlot] = useState<SlotMemberData | null>(null);
+  // Active member for each slot at the selected targetDate
+  const activeSlotMembers = useMemo(() => {
+    const targetTime = new Date(targetDate).getTime();
+    const map: Record<number, SlotMemberData> = {};
 
-  // 2. 8+1 Support Mode Config
+    for (let slot = 1; slot <= 9; slot++) {
+      // Find member whose range covers targetDate
+      const activeMem = members.find((m) => {
+        if (m.slotNo !== slot) return false;
+        const start = new Date(m.workStartDate).getTime();
+        const end = new Date(m.workEndDate || '9999-12-31').getTime();
+        return targetTime >= start && targetTime <= end;
+      });
+
+      if (activeMem) {
+        map[slot] = activeMem;
+      } else {
+        // Fallback to first member of this slot or vacant placeholder
+        const anyMem = members.find((m) => m.slotNo === slot);
+        map[slot] = anyMem || {
+          id: `vacant_${slot}`,
+          slotNo: slot,
+          unit: slot <= 4 ? '3호기' : '4호기',
+          name: '(결원)',
+          phone: '-',
+          telegramId: '-',
+          email: '-',
+          workStartDate: targetDate,
+          workEndDate: '9999-12-31',
+          terminationReason: '해당 기간 인원 미배정',
+          status: '결원',
+          role: 'L1_VIEWER',
+          accountStatus: 'pending',
+        };
+      }
+    }
+    return map;
+  }, [members, targetDate]);
+
+  // Editing / Adding Slot Modal State
+  const [editingMember, setEditingMember] = useState<SlotMemberData | null>(null);
+  const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  /**
+   * 슬롯 기간 중복 검증 함수
+   * 동일한 슬롯 번호에 기존 근무자의 [시작일, 종료일]과 겹치는지 검사
+   */
+  const checkPeriodOverlap = (
+    candidateId: string,
+    slotNo: number,
+    startStr: string,
+    endStr: string
+  ): { isValid: boolean; conflictMember?: SlotMemberData; reason?: string } => {
+    const cStart = new Date(startStr).getTime();
+    const cEnd = new Date(endStr).getTime();
+
+    if (cEnd < cStart) {
+      return { isValid: false, reason: '근무 종료일이 근무 시작일보다 앞설 수 없습니다.' };
+    }
+
+    for (const m of members) {
+      if (m.id === candidateId) continue; // 자기 자신 제외
+      if (m.slotNo === slotNo) {
+        const mStart = new Date(m.workStartDate).getTime();
+        const mEnd = new Date(m.workEndDate || '9999-12-31').getTime();
+
+        // 기간 중복 조건: (새시작 <= 기존종료) && (새종료 >= 기존시작)
+        if (cStart <= mEnd && cEnd >= mStart) {
+          return {
+            isValid: false,
+            conflictMember: m,
+            reason: `기존 근무자 [${m.name}]의 근무 기간(${m.workStartDate} ~ ${m.workEndDate})과 중복됩니다.`,
+          };
+        }
+      }
+    }
+
+    return { isValid: true };
+  };
+
+  const handleOpenAddMember = (slotNo: number) => {
+    setIsAddingNew(true);
+    setValidationError(null);
+    setEditingMember({
+      id: `m-${Date.now()}`,
+      slotNo,
+      unit: slotNo <= 4 ? '3호기' : '4호기',
+      name: '',
+      phone: '010-',
+      telegramId: '@',
+      email: '@khnp.co.kr',
+      workStartDate: '2026-01-01',
+      workEndDate: '9999-12-31',
+      terminationReason: '재직중 (정상 근무)',
+      status: '재직중',
+      role: 'L2_HP',
+      accountStatus: 'approved',
+    });
+  };
+
+  const handleOpenEditMember = (mem: SlotMemberData) => {
+    setIsAddingNew(false);
+    setValidationError(null);
+    setEditingMember({ ...mem });
+  };
+
+  const handleSaveMember = () => {
+    if (!editingMember) return;
+    if (!editingMember.name.trim()) {
+      setValidationError('성명을 입력해 주세요.');
+      return;
+    }
+
+    // 중복 기간 검증
+    const check = checkPeriodOverlap(
+      editingMember.id,
+      editingMember.slotNo,
+      editingMember.workStartDate,
+      editingMember.workEndDate || '9999-12-31'
+    );
+
+    if (!check.isValid) {
+      setValidationError(
+        `[Slot ${editingMember.slotNo} 등록 불가] ${check.reason} 같은 슬롯에는 근무 기간이 겹치지 않는 경우에만 추가 등록이 가능합니다.`
+      );
+      return;
+    }
+
+    if (isAddingNew) {
+      setMembers((prev) => [...prev, editingMember]);
+    } else {
+      setMembers((prev) =>
+        prev.map((m) => (m.id === editingMember.id ? editingMember : m))
+      );
+    }
+
+    setEditingMember(null);
+    setValidationError(null);
+  };
+
+  // ---------------------------------------------------------------------------
+  // 3. 8+1 모드 설정 & 결원 백업인원 자동 선정 및 수동 변경
+  // ---------------------------------------------------------------------------
   const [eightPlusOneConfig, setEightPlusOneConfig] = useState({
     enabled: true,
     supportName: '방안부지원',
     supportDepartment: '방사선안전부',
     startDate: '2027-01-04',
     endDate: '2027-03-07',
-    swapCreditMode: true,
-    offOnHolidays: true,
+    vacantSlotNo: 1, // 기본 결원 슬롯 1 (3호기)
+    manualBackupSlotNo: null as number | null, // 관리자 수동 선택
   });
 
-  // 3. Holiday Management State
+  // 결원 슬롯 기준 반대편 호기 및 자동 백업 후보 선정
+  const autoBackupInfo = useMemo(() => {
+    const vSlot = eightPlusOneConfig.vacantSlotNo;
+    const isVacantIn3U = vSlot <= 4;
+    const targetUnit = isVacantIn3U ? '4호기' : '3호기';
+
+    // 결원 반대편 호기에서 '제일 마지막 통상 교대인원' 산출
+    // 통상 순환 순서: 9 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
+    // 결원이 3호기(1~4)이면 반대편 4호기(5~9) 중 마지막 통상 인원은 Slot 8 (신욱제)
+    // 결원이 4호기(5~9)이면 반대편 3호기(1~4) 중 마지막 통상 인원은 Slot 4 (임원택)
+    const autoSlotNo = isVacantIn3U ? 8 : 4;
+    const autoMember = members.find((m) => m.slotNo === autoSlotNo);
+
+    // 관리자가 수동 선택했으면 수동 선택 슬롯, 아니면 자동 슬롯
+    const selectedSlotNo = eightPlusOneConfig.manualBackupSlotNo || autoSlotNo;
+    const selectedMember = members.find((m) => m.slotNo === selectedSlotNo);
+
+    return {
+      vacantUnit: isVacantIn3U ? '3호기' : '4호기',
+      oppositeUnit: targetUnit,
+      autoSlotNo,
+      autoMemberName: autoMember?.name || `Slot ${autoSlotNo}`,
+      selectedSlotNo,
+      selectedMemberName: selectedMember?.name || `Slot ${selectedSlotNo}`,
+      isManual: eightPlusOneConfig.manualBackupSlotNo !== null,
+    };
+  }, [eightPlusOneConfig.vacantSlotNo, eightPlusOneConfig.manualBackupSlotNo, members]);
+
+  // ---------------------------------------------------------------------------
+  // 4. 연도별 공휴일 관리
+  // ---------------------------------------------------------------------------
   const [selectedHolidayYear, setSelectedHolidayYear] = useState<number>(year);
   const [holidayStore, setHolidayStore] = useState<Record<number, Holiday[]>>({
     2026: getDefaultHolidaysForYear(2026),
@@ -232,7 +449,6 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     2028: getDefaultHolidaysForYear(2028),
   });
 
-  // New Holiday Input Form
   const [newHoliday, setNewHoliday] = useState<{
     dateStr: string;
     name: string;
@@ -278,12 +494,13 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     setCustomHolidays(defaults);
   };
 
-  // 4. Simulation & Commit State
+  // ---------------------------------------------------------------------------
+  // 5. 시뮬레이션 및 확정 (Simulation & Commit)
+  // ---------------------------------------------------------------------------
   const [simResult, setSimResult] = useState<any | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [isCommitted, setIsCommitted] = useState(false);
 
-  // Run Simulation
   const handleRunSimulation = () => {
     setIsSimulating(true);
     setIsCommitted(false);
@@ -311,10 +528,9 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       } finally {
         setIsSimulating(false);
       }
-    }, 400);
+    }, 300);
   };
 
-  // Commit Simulation to Live
   const handleCommitToLive = () => {
     if (!simResult) {
       alert('먼저 시뮬레이션을 실행하여 결과를 검증해 주세요.');
@@ -335,13 +551,22 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     alert('설정된 슬롯 인원 및 8+1 근무표가 라이브 시스템에 성공적으로 확정 반영되었습니다.');
   };
 
-  // Save Slot Edit
-  const handleSaveSlotEdit = () => {
-    if (!editingSlot) return;
-    setSlots((prev) =>
-      prev.map((s) => (s.slotNo === editingSlot.slotNo ? editingSlot : s))
-    );
-    setEditingSlot(null);
+  // ---------------------------------------------------------------------------
+  // 6. 공유 DB 전체 데이터 즉시 저장 (Seed DB Now)
+  // ---------------------------------------------------------------------------
+  const [isSeedingDb, setIsSeedingDb] = useState(false);
+  const handleSeedAllToDb = async () => {
+    if (
+      !confirm(
+        '현재 설정된 모든 9슬롯 인원, 2026/2027/2028 공휴일, 8+1 시나리오 데이터를 공유 DB(Supabase)에 즉시 저장하시겠습니까?'
+      )
+    )
+      return;
+
+    setIsSeedingDb(true);
+    const res = await seedAllMasterDataToDb(members, activeHolidays, selectedHolidayYear);
+    setIsSeedingDb(false);
+    alert(res.message);
   };
 
   const getDisplayName = (slotNo: number, name: string) => {
@@ -351,7 +576,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. Master Header Banner */}
+      {/* Top Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 text-white rounded-2xl p-6 shadow-lg border border-slate-700">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5">
@@ -361,22 +586,33 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-400 text-slate-950">
-                  L3_ADMIN 전용
+                  L3_ADMIN 전용 마스터 콘솔
                 </span>
                 <span className="text-xs text-purple-200 font-semibold">
-                  원형 큐 84일 시프트 관리 콘솔
+                  원형 큐 84일 주기 · 인원 배정 · 8+1 및 공유 DB
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
-                HP 슬롯 및 근무 총괄 관리
+                HP 슬롯 및 교대근무 총괄 관리
               </h1>
               <p className="text-xs text-slate-300 mt-1">
-                1~4슬롯 3호기 / 5~9슬롯 4호기 원형 큐 인원 배치, 8+1 모드, 공휴일 관리 및 시뮬레이션 확정
+                1~4슬롯(3호기) / 5~9슬롯(4호기) 원형 큐 관리, 84일 주기 자동 시작일 산출, 기간 비중복 슬롯 관리, 공유 DB 영구 저장
               </p>
             </div>
           </div>
 
+          {/* Action Buttons: Seed DB & Anonymize */}
           <div className="flex items-center space-x-2">
+            <button
+              onClick={handleSeedAllToDb}
+              disabled={isSeedingDb}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-md transition-all hover:scale-105"
+              title="현재 설정된 모든 데이터를 공유 DB(Supabase)에 즉시 저장"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>{isSeedingDb ? 'DB 저장 중...' : '공유 DB 전체 저장'}</span>
+            </button>
+
             <button
               onClick={onToggleAnonymize}
               className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center space-x-1.5 transition-colors ${
@@ -385,18 +621,18 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                   : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
               }`}
             >
-              <span>{anonymize ? '익명화 모드 ON' : '실명 표시 모드'}</span>
+              <span>{anonymize ? '익명(HP-01)' : '실명 표시'}</span>
             </button>
           </div>
         </div>
 
-        {/* Sub-Tabs Nav */}
+        {/* Sub-Tabs Navigation */}
         <div className="mt-5 pt-3 border-t border-slate-700/80 flex flex-wrap gap-2 text-xs font-bold">
           {[
-            { id: 'slots', label: '1~9슬롯 원형 큐 및 인원 관리', icon: Users },
-            { id: 'eight_plus', label: '8+1 지원조 모드 설정', icon: Sparkles },
-            { id: 'holidays', label: '연도별 공휴일 관리', icon: Calendar },
-            { id: 'simulate', label: '근무표 시뮬레이션 및 확정', icon: PlayCircle },
+            { id: 'slots', label: '1~9슬롯 원형 큐 및 인원 관리 (84일 주기)', icon: Users },
+            { id: 'eight_plus', label: '8+1 지원조 설정 & 결원 백업인원', icon: Sparkles },
+            { id: 'holidays', label: '연도별 공휴일 관리 (DB 연동)', icon: Calendar },
+            { id: 'simulate', label: '근무표 시뮬레이션 및 확정 (Commit)', icon: PlayCircle },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
@@ -418,21 +654,58 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
         </div>
       </div>
 
-      {/* 2. Sub-Tab Content: 1~9 Slots Circular Queue & Member Info */}
+      {/* =========================================================================
+          TAB 1: 1~9 Slots Circular Queue & Member History
+      ========================================================================= */}
       {activeSubTab === 'slots' && (
         <div className="space-y-6">
-          {/* Visual 9-slot Circular Queue Diagram */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-5">
+          {/* 1. Target Date & 84-day Cycle Start Date Display Box */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-base flex items-center space-x-2">
                   <RotateCw className="w-4 h-4 text-brand-600" />
-                  <span>9칸 원형 큐 호기별 배치도 (1~4슬롯: 3호기, 5~9슬롯: 4호기)</span>
+                  <span>84일 주기 기준일 선택 및 원형 큐 순환 연동</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  84일마다 우측 1칸 시프트하여 호기간 공평한 순환이 이루어집니다.
+                  기준일을 변경하면 해당 기준일이 포함되는 <strong>84일 주기의 시작일</strong>이 자동 계산되고 원형 큐 슬롯 배치가 변경됩니다.
                 </p>
               </div>
+
+              {/* Target Date Picker */}
+              <div className="flex items-center space-x-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-700">기준일 선택:</span>
+                <input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 shadow-xs"
+                />
+              </div>
+            </div>
+
+            {/* Calculated 84-day Cycle Banner */}
+            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 border border-indigo-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center space-x-3">
+                <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
+                  {cycleInfo.cycleNum}
+                </span>
+                <div>
+                  <div className="font-extrabold text-indigo-950 text-sm">
+                    제 {cycleInfo.cycleNum}차 84일 순환 주기 (우측 {cycleInfo.shiftSteps}칸 시프트 적용)
+                  </div>
+                  <div className="text-slate-600 font-medium mt-0.5">
+                    기준일 <span className="font-bold text-indigo-700">{targetDate}</span> 가 포함되는 주기:
+                    <span className="font-bold text-indigo-900 ml-1">
+                      {cycleInfo.startDate} ~ {cycleInfo.endDate}
+                    </span>
+                    <span className="text-slate-400 ml-1">
+                      (주기 시작일로부터 +{cycleInfo.diffDays % 84}일차)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center space-x-2 text-xs font-bold">
                 <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 border border-blue-200">
                   1~4슬롯: 3호기 (4명)
@@ -443,15 +716,16 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
               </div>
             </div>
 
-            {/* Circular Grid Cards (1 to 9) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-9 gap-3">
-              {slots.map((s) => {
-                const is3U = s.slotNo <= 4;
-                const displayName = getDisplayName(s.slotNo, s.name);
+            {/* 9 Slots Circular Grid Cards for the Target Date */}
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-9 gap-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((slotNo) => {
+                const is3U = slotNo <= 4;
+                const activeMem = activeSlotMembers[slotNo];
+                const displayName = getDisplayName(slotNo, activeMem.name);
 
                 return (
                   <div
-                    key={s.slotNo}
+                    key={slotNo}
                     className={`rounded-2xl p-3 border transition-all hover:shadow-md ${
                       is3U
                         ? 'bg-blue-50/50 border-blue-200'
@@ -464,14 +738,14 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                           is3U ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white'
                         }`}
                       >
-                        S{s.slotNo}
+                        S{slotNo}
                       </span>
                       <span
                         className={`text-[10px] font-bold ${
                           is3U ? 'text-blue-700' : 'text-emerald-700'
                         }`}
                       >
-                        {s.unit}
+                        {is3U ? '3호기' : '4호기'}
                       </span>
                     </div>
 
@@ -480,15 +754,15 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     </div>
 
                     <div className="text-[10px] text-slate-500 mt-1 truncate">
-                      {s.phone}
+                      {activeMem.phone}
                     </div>
 
                     <div className="mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
-                      <span className="text-slate-400 font-medium">
-                        {s.status}
+                      <span className="text-slate-400 font-medium truncate max-w-[65px]">
+                        {activeMem.status}
                       </span>
                       <button
-                        onClick={() => setEditingSlot(s)}
+                        onClick={() => handleOpenEditMember(activeMem)}
                         className="text-brand-600 hover:text-brand-800 font-bold"
                       >
                         수정
@@ -500,19 +774,31 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
             </div>
           </div>
 
-          {/* Full Slots Table */}
+          {/* 2. Full Members Management Table (Non-overlapping Same-Slot History Support) */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-base">
-                  슬롯별 HP 인원 및 근무 상세 정보
+                  슬롯별 HP 인원 및 근무 이력 관리
                 </h3>
                 <p className="text-xs text-slate-500">
-                  이름, 휴대폰, 텔레그램 ID, 계정, 근무 시작/종료일 및 종료 사유 관리
+                  * <strong>기간 비중복 규칙:</strong> 같은 슬롯 번호라도 근무 시작일과 종료일이 겹치지 않으면 후임자/교체 인원을 자유롭게 추가할 수 있습니다.
                 </p>
+              </div>
+
+              {/* Add Member Button */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleOpenAddMember(1)}
+                  className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1 shadow-sm transition-all"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>인원 추가 (교체 등록)</span>
+                </button>
               </div>
             </div>
 
+            {/* Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-xs">
                 <thead className="bg-slate-100 font-bold text-slate-700">
@@ -527,84 +813,87 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     <th className="px-3 py-2.5 text-center">근무 종료일</th>
                     <th className="px-3 py-2.5 text-left">근무 종료 사유</th>
                     <th className="px-3 py-2.5 text-center">상태</th>
-                    <th className="px-3 py-2.5 text-center w-16">관리</th>
+                    <th className="px-3 py-2.5 text-center w-20">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {slots.map((s) => {
-                    const is3U = s.slotNo <= 4;
-                    const displayName = getDisplayName(s.slotNo, s.name);
+                  {members
+                    .slice()
+                    .sort((a, b) => a.slotNo - b.slotNo || a.workStartDate.localeCompare(b.workStartDate))
+                    .map((m) => {
+                      const is3U = m.slotNo <= 4;
+                      const displayName = getDisplayName(m.slotNo, m.name);
 
-                    return (
-                      <tr key={s.slotNo} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-3 py-2.5 text-center font-black font-mono">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[11px] ${
-                              is3U
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            Slot {s.slotNo}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-center font-bold">
-                          {s.unit}
-                        </td>
-                        <td className="px-3 py-2.5 font-bold text-slate-900">
-                          {displayName}
-                        </td>
-                        <td className="px-3 py-2.5 font-mono text-slate-600">
-                          <div className="flex items-center space-x-1">
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            <span>{s.phone}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5 font-mono text-sky-700 font-semibold">
-                          <div className="flex items-center space-x-1">
-                            <Send className="w-3 h-3 text-sky-500" />
-                            <span>{s.telegramId}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5 font-mono text-slate-600">
-                          <div className="flex items-center space-x-1">
-                            <Mail className="w-3 h-3 text-slate-400" />
-                            <span>{s.email}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5 text-center font-mono text-slate-600">
-                          {s.workStartDate}
-                        </td>
-                        <td className="px-3 py-2.5 text-center font-mono text-slate-600">
-                          {s.workEndDate || '계속'}
-                        </td>
-                        <td className="px-3 py-2.5 text-slate-700">
-                          {s.terminationReason}
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              s.status === '재직중'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : s.status === '임금피크'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          <button
-                            onClick={() => setEditingSlot(s)}
-                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
-                          >
-                            수정
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-3 py-2.5 text-center font-black font-mono">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[11px] ${
+                                is3U
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              Slot {m.slotNo}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center font-bold">
+                            {m.unit}
+                          </td>
+                          <td className="px-3 py-2.5 font-bold text-slate-900">
+                            {displayName}
+                          </td>
+                          <td className="px-3 py-2.5 font-mono text-slate-600">
+                            <div className="flex items-center space-x-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>{m.phone}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 font-mono text-sky-700 font-semibold">
+                            <div className="flex items-center space-x-1">
+                              <Send className="w-3 h-3 text-sky-500" />
+                              <span>{m.telegramId}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 font-mono text-slate-600">
+                            <div className="flex items-center space-x-1">
+                              <Mail className="w-3 h-3 text-slate-400" />
+                              <span>{m.email}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-center font-mono font-bold text-slate-800">
+                            {m.workStartDate}
+                          </td>
+                          <td className="px-3 py-2.5 text-center font-mono font-bold text-slate-800">
+                            {m.workEndDate === '9999-12-31' ? '계속(9999-12-31)' : m.workEndDate}
+                          </td>
+                          <td className="px-3 py-2.5 text-slate-700">
+                            {m.terminationReason}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                m.status === '재직중'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : m.status === '임금피크'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {m.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <button
+                              onClick={() => handleOpenEditMember(m)}
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                            >
+                              수정
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
@@ -612,27 +901,29 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
         </div>
       )}
 
-      {/* 3. Sub-Tab Content: 8+1 Mode Settings */}
+      {/* =========================================================================
+          TAB 2: 8+1 Support Mode & Auto/Manual Backup Selection
+      ========================================================================= */}
       {activeSubTab === 'eight_plus' && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
           <div className="border-b border-slate-200 pb-4">
             <h3 className="font-extrabold text-slate-900 text-base flex items-center space-x-2">
               <Sparkles className="w-5 h-5 text-amber-600" />
-              <span>8+1 체제 지원조 운영 설정</span>
+              <span>8+1 체제 설정 & 결원 백업인원 자동/수동 선정 규칙</span>
             </h3>
             <p className="text-xs text-slate-500 mt-1">
-              결원 발생 시 방안부 일근 요원 1명을 지원 투입하여 365일 무결점 커버리지를 보장합니다.
+              결원 발생 호기의 반대편 호기에서 제일 마지막 통상 교대인원을 자동 선정하고, 9명 원복 시 원래 슬롯 순번으로 앞뒤 순서를 유지하며 일요일까지 잔여 통상을 마무리합니다.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left: Mode Toggle & Parameters */}
+            {/* Left: Configuration Controls */}
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                 <div>
                   <div className="font-bold text-sm text-slate-900">8+1 지원조 투입 모드 활성화</div>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    평일 일근 투입 및 휴일 투입 시 대체휴무 스왑 정산 활성화
+                    평일 일근 직접지원 및 휴일투입 대체스왑 정산 적용
                   </div>
                 </div>
                 <input
@@ -645,10 +936,85 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 />
               </div>
 
+              {/* Vacant Slot Selection */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  결원 발생 슬롯 선택:
+                </label>
+                <select
+                  value={eightPlusOneConfig.vacantSlotNo}
+                  onChange={(e) =>
+                    setEightPlusOneConfig((prev) => ({
+                      ...prev,
+                      vacantSlotNo: Number(e.target.value),
+                      manualBackupSlotNo: null, // 결원 변경 시 수동 선택 초기화
+                    }))
+                  }
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-800"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((s) => (
+                    <option key={s} value={s}>
+                      Slot {s} ({s <= 4 ? '3호기' : '4호기'}) - {members.find((m) => m.slotNo === s)?.name || ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Backup Candidate Selection (Auto vs Manual) */}
+              <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-indigo-950 flex items-center space-x-1.5">
+                    <RotateCw className="w-4 h-4 text-indigo-600" />
+                    <span>결원 백업 투입 인원 선정</span>
+                  </span>
+                  <span
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      autoBackupInfo.isManual
+                        ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                        : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    }`}
+                  >
+                    {autoBackupInfo.isManual ? '관리자 수동 지정' : '알고리즘 자동 선정'}
+                  </span>
+                </div>
+
+                <div className="text-xs text-indigo-900 leading-relaxed font-medium">
+                  • 결원 호기: <strong className="text-slate-900">{autoBackupInfo.vacantUnit}</strong> (Slot {eightPlusOneConfig.vacantSlotNo})<br />
+                  • 반대편 호기: <strong className="text-slate-900">{autoBackupInfo.oppositeUnit}</strong><br />
+                  • 반대편 최후 통상인원(자동 추천): <strong className="text-indigo-700">Slot {autoBackupInfo.autoSlotNo} ({autoBackupInfo.autoMemberName})</strong>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-indigo-950 block mb-1">
+                    백업 요원 변경 (필요 시 수동 선택):
+                  </label>
+                  <select
+                    value={eightPlusOneConfig.manualBackupSlotNo || autoBackupInfo.autoSlotNo}
+                    onChange={(e) =>
+                      setEightPlusOneConfig((prev) => ({
+                        ...prev,
+                        manualBackupSlotNo: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full bg-white border border-indigo-300 rounded-lg p-2 text-xs font-bold text-slate-900"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9]
+                      .filter((s) => s !== eightPlusOneConfig.vacantSlotNo)
+                      .map((s) => (
+                        <option key={s} value={s}>
+                          Slot {s} ({s <= 4 ? '3호기' : '4호기'}) - {members.find((m) => m.slotNo === s)?.name || ''}
+                          {s === autoBackupInfo.autoSlotNo ? ' (★ 자동 추천: 반대편 최종 통상)' : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Start & End Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    8+1 투입 시작일:
+                    지원 투입 시작일:
                   </label>
                   <input
                     type="date"
@@ -661,7 +1027,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    8+1 투입 종료일:
+                    9인 원복 종료일:
                   </label>
                   <input
                     type="date"
@@ -673,79 +1039,56 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                   />
                 </div>
               </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  지원조 담당자 성명:
-                </label>
-                <input
-                  type="text"
-                  value={eightPlusOneConfig.supportName}
-                  onChange={(e) =>
-                    setEightPlusOneConfig((prev) => ({ ...prev, supportName: e.target.value }))
-                  }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  소속 부서:
-                </label>
-                <input
-                  type="text"
-                  value={eightPlusOneConfig.supportDepartment}
-                  onChange={(e) =>
-                    setEightPlusOneConfig((prev) => ({
-                      ...prev,
-                      supportDepartment: e.target.value,
-                    }))
-                  }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-semibold"
-                />
-              </div>
             </div>
 
-            {/* Right: Operational Rules Summary */}
-            <div className="p-4 rounded-xl bg-purple-50/60 border border-purple-200 text-xs text-purple-950 space-y-3">
-              <h4 className="font-extrabold text-purple-900 flex items-center space-x-1.5">
-                <CheckCircle2 className="w-4 h-4 text-purple-700" />
-                <span>8+1 체제 불변 규칙 가이드라인</span>
+            {/* Right: Restoration & Sunday Grace Guidelines */}
+            <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-4">
+              <h4 className="font-extrabold text-amber-900 text-sm flex items-center space-x-1.5">
+                <CheckCircle2 className="w-4 h-4 text-amber-700" />
+                <span>9명 원복 복귀 및 잔여 통상 마무리 규칙</span>
               </h4>
-              <ul className="space-y-1.5 list-disc list-inside leading-relaxed text-purple-900/90">
-                <li>
-                  <strong>평일 주간 지원:</strong> 월~금 평일 발생 3호기(3D) 또는 4호기(4D) 공백에 방안부 일근자가 직접 투입됩니다.
-                </li>
-                <li>
-                  <strong>주말·공휴일 휴무 보장:</strong> 토/일/공휴일에는 방안부 요원이 100% 휴무(OFF)합니다.
-                </li>
-                <li>
-                  <strong>휴일 Phase-11 투입 및 대체스왑:</strong> 주말·공휴일 공백은 기존 HP 요원이 투입되고 평일에 대체휴무(3D*/4D*)를 보상받습니다.
-                </li>
-                <li>
-                  <strong>크레딧 완전 정산:</strong> 66일(1/1~3/7) 동안 발생한 모든 크레딧은 3/7 종료 시점까지 잔여 5일 이내로 완벽 균형을 유지합니다.
-                </li>
-              </ul>
+
+              <div className="space-y-2.5 text-amber-900/95 leading-relaxed font-medium">
+                <p>
+                  <strong>1. 원 슬롯 위치 및 순번 완전 복원:</strong><br />
+                  백업 인원으로 수동/자동 선택된 요원은 9명 체제 원복 시점({eightPlusOneConfig.endDate})에
+                  원래 본인이 위치했던 <strong>슬롯 번호(Slot {autoBackupInfo.selectedSlotNo})로 복귀</strong>하며,
+                  원형 큐의 앞·뒤 인원 순번이 100% 동일하게 복구됩니다.
+                </p>
+
+                <p>
+                  <strong>2. 일요일까지 잔여 통상 완수:</strong><br />
+                  복귀한 요원은 원복 주간의 <strong>일요일 24:00까지 본인의 잔여 통상 주간 근무(4D)를 정상 완수</strong>합니다.
+                  이를 통해 야간 직후 주간 투입과 같은 역순환이 0건으로 완벽히 차단됩니다.
+                </p>
+
+                <p>
+                  <strong>3. 차기 통상 요원의 월요일 승계:</strong><br />
+                  다음 통상 순번 요원(Slot 9)은 <strong>다음 주 월요일 00:00부터</strong> 정규 21일 통상 순번으로 진입하여
+                  원형 큐의 끊김 없는 무결점 교대가 유지됩니다.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. Sub-Tab Content: Holiday Management */}
+      {/* =========================================================================
+          TAB 3: Holiday Management (DB Linked)
+      ========================================================================= */}
       {activeSubTab === 'holidays' && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
               <h3 className="font-extrabold text-slate-900 text-base flex items-center space-x-2">
                 <Calendar className="w-5 h-5 text-brand-600" />
-                <span>연도별 법정공휴일 및 대체공휴일 관리</span>
+                <span>연도별 법정공휴일 관리 및 DB 동기화</span>
               </h3>
               <p className="text-xs text-slate-500 mt-1">
                 우주항공청 월력요항 기준 공식 데이터베이스 조회 및 기관별 맞춤 휴일 추가/삭제
               </p>
             </div>
 
-            {/* Year Selector & Reset */}
             <div className="flex items-center space-x-2">
               <select
                 value={selectedHolidayYear}
@@ -766,7 +1109,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
             </div>
           </div>
 
-          {/* Add New Holiday Form */}
+          {/* Add Form */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-wrap items-end gap-3 text-xs">
             <div>
               <label className="block font-bold text-slate-700 mb-1">일자:</label>
@@ -858,7 +1201,9 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
         </div>
       )}
 
-      {/* 5. Sub-Tab Content: Simulation & Commit */}
+      {/* =========================================================================
+          TAB 4: Simulation & Commit to Live
+      ========================================================================= */}
       {activeSubTab === 'simulate' && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
@@ -894,10 +1239,9 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
             </div>
           </div>
 
-          {/* Simulation Results Display */}
+          {/* Results Display */}
           {simResult ? (
             <div className="space-y-5 animate-in fade-in duration-200">
-              {/* 3 Metric Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                   <div className="text-xs font-bold text-emerald-800">일일 커버리지 검증</div>
@@ -922,7 +1266,6 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 </div>
               </div>
 
-              {/* Status Banner */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                 <div>
                   <span className="font-bold text-slate-800">시뮬레이션 결과: </span>
@@ -946,54 +1289,72 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
         </div>
       )}
 
-      {/* 6. Edit Slot Modal */}
-      {editingSlot && (
+      {/* =========================================================================
+          MODAL: Member Add / Edit with Period Overlap Validation
+      ========================================================================= */}
+      {editingMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h4 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
                   <Edit2 className="w-4 h-4 text-purple-600" />
-                  Slot {editingSlot.slotNo} 인원 및 근무 정보 수정
+                  {isAddingNew
+                    ? `Slot ${editingMember.slotNo} 신규 인원 / 교체자 추가`
+                    : `Slot ${editingMember.slotNo} 인원 정보 수정`}
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {editingSlot.unit} 배치 요원 정보
+                  {editingMember.slotNo <= 4 ? '3호기' : '4호기'} 배정 요원 정보
                 </p>
               </div>
               <button
-                onClick={() => setEditingSlot(null)}
+                onClick={() => setEditingMember(null)}
                 className="p-1 text-slate-400 hover:text-slate-600"
               >
                 ✕
               </button>
             </div>
 
+            {/* Validation Error Banner */}
+            {validationError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 leading-relaxed font-semibold">
+                ⚠️ {validationError}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">성명:</label>
                 <input
                   type="text"
-                  value={editingSlot.name}
+                  value={editingMember.name}
                   onChange={(e) =>
-                    setEditingSlot((prev) => (prev ? { ...prev, name: e.target.value } : null))
+                    setEditingMember((prev) => (prev ? { ...prev, name: e.target.value } : null))
                   }
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-bold"
+                  placeholder="예: 홍길동"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">소속 호기:</label>
+                <label className="font-bold text-slate-700 block mb-1">슬롯 번호:</label>
                 <select
-                  value={editingSlot.unit}
-                  onChange={(e) =>
-                    setEditingSlot((prev) =>
-                      prev ? { ...prev, unit: e.target.value as any } : null
-                    )
-                  }
+                  value={editingMember.slotNo}
+                  onChange={(e) => {
+                    const s = Number(e.target.value);
+                    setEditingMember((prev) =>
+                      prev
+                        ? { ...prev, slotNo: s, unit: s <= 4 ? '3호기' : '4호기' }
+                        : null
+                    );
+                  }}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-bold"
                 >
-                  <option value="3호기">3호기 (슬롯 1~4)</option>
-                  <option value="4호기">4호기 (슬롯 5~9)</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((s) => (
+                    <option key={s} value={s}>
+                      Slot {s} ({s <= 4 ? '3호기' : '4호기'})
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -1001,9 +1362,9 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">휴대폰 번호:</label>
                 <input
                   type="text"
-                  value={editingSlot.phone}
+                  value={editingMember.phone}
                   onChange={(e) =>
-                    setEditingSlot((prev) => (prev ? { ...prev, phone: e.target.value } : null))
+                    setEditingMember((prev) => (prev ? { ...prev, phone: e.target.value } : null))
                   }
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
                 />
@@ -1013,9 +1374,9 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">텔레그램 ID:</label>
                 <input
                   type="text"
-                  value={editingSlot.telegramId}
+                  value={editingMember.telegramId}
                   onChange={(e) =>
-                    setEditingSlot((prev) =>
+                    setEditingMember((prev) =>
                       prev ? { ...prev, telegramId: e.target.value } : null
                     )
                   }
@@ -1027,39 +1388,39 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">이메일 계정:</label>
                 <input
                   type="email"
-                  value={editingSlot.email}
+                  value={editingMember.email}
                   onChange={(e) =>
-                    setEditingSlot((prev) => (prev ? { ...prev, email: e.target.value } : null))
+                    setEditingMember((prev) => (prev ? { ...prev, email: e.target.value } : null))
                   }
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">근무 시작일:</label>
+                <label className="font-bold text-slate-700 block mb-1">근무 시작일 (기본: 2026-01-01):</label>
                 <input
                   type="date"
-                  value={editingSlot.workStartDate}
+                  value={editingMember.workStartDate}
                   onChange={(e) =>
-                    setEditingSlot((prev) =>
+                    setEditingMember((prev) =>
                       prev ? { ...prev, workStartDate: e.target.value } : null
                     )
                   }
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono font-bold"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">근무 종료일 (선택):</label>
+                <label className="font-bold text-slate-700 block mb-1">근무 종료일 (기본: 9999-12-31):</label>
                 <input
                   type="date"
-                  value={editingSlot.workEndDate}
+                  value={editingMember.workEndDate}
                   onChange={(e) =>
-                    setEditingSlot((prev) =>
+                    setEditingMember((prev) =>
                       prev ? { ...prev, workEndDate: e.target.value } : null
                     )
                   }
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono font-bold"
                 />
               </div>
 
@@ -1067,10 +1428,10 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">근무 종료 사유 / 비고:</label>
                 <input
                   type="text"
-                  placeholder="예: 재직중, 정년퇴직, 임금피크 교체, 부서이동 등"
-                  value={editingSlot.terminationReason}
+                  placeholder="예: 재직중 (정상 근무), 정년퇴직, 임금피크 교체, 부서이동 등"
+                  value={editingMember.terminationReason}
                   onChange={(e) =>
-                    setEditingSlot((prev) =>
+                    setEditingMember((prev) =>
                       prev ? { ...prev, terminationReason: e.target.value } : null
                     )
                   }
@@ -1081,13 +1442,13 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
             <div className="pt-3 border-t flex justify-end space-x-2 text-xs">
               <button
-                onClick={() => setEditingSlot(null)}
+                onClick={() => setEditingMember(null)}
                 className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold"
               >
                 취소
               </button>
               <button
-                onClick={handleSaveSlotEdit}
+                onClick={handleSaveMember}
                 className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold shadow-sm"
               >
                 저장 반영

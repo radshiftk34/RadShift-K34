@@ -129,6 +129,7 @@ export async function fetchRemoteSlots(): Promise<SlotMemberData[] | null> {
     if (error || !data || data.length === 0) return null;
 
     return data.map((r) => ({
+      id: `slot-${r.slot_no}-${r.work_start_date || 'default'}`,
       slotNo: r.slot_no,
       unit: r.unit as '3호기' | '4호기',
       name: r.member_name,
@@ -136,7 +137,7 @@ export async function fetchRemoteSlots(): Promise<SlotMemberData[] | null> {
       telegramId: r.telegram_id || '',
       email: r.email || '',
       workStartDate: r.work_start_date || '2026-01-01',
-      workEndDate: r.work_end_date || '2027-12-31',
+      workEndDate: r.work_end_date || '9999-12-31',
       terminationReason: r.termination_reason || '재직중',
       status: (r.status || '재직중') as any,
       role: 'L2_HP',
@@ -243,5 +244,69 @@ export async function recordRemoteAuditLog(
     });
   } catch {
     // silent fail for audit logs
+  }
+}
+
+/**
+ * Seed all master data to the shared Supabase DB
+ */
+export async function seedAllMasterDataToDb(
+  slots: SlotMemberData[],
+  holidays: Holiday[],
+  year: number
+): Promise<{ success: boolean; message: string }> {
+  if (!isSupabaseConfigured) {
+    return {
+      success: false,
+      message: 'Supabase가 설정되지 않았습니다. .env 파일에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 입력해주세요.',
+    };
+  }
+
+  try {
+    // 1. Slots
+    const slotSuccess = await saveRemoteSlots(slots);
+    if (!slotSuccess) {
+      return { success: false, message: '슬롯 인원 데이터 저장에 실패했습니다.' };
+    }
+
+    // 2. Holidays
+    const holSuccess = await saveRemoteHolidays(year, holidays);
+    if (!holSuccess) {
+      return { success: false, message: '공휴일 데이터 저장에 실패했습니다.' };
+    }
+
+    // 3. Scenario
+    await supabase.from('scenarios').upsert(
+      {
+        name: '2027년 8+1 방안부 지원 및 9인 원복 시나리오',
+        mode: 'EIGHT_PLUS_DAYTIME',
+        start_date: '2027-01-01',
+        end_date: '2027-12-31',
+        vacant_slot_no: 1,
+        temp_cover_slot_no: 8,
+        support_name: '방안부지원',
+        support_department: '방사선안전부',
+        support_start_date: '2027-01-04',
+        support_end_date: '2027-03-07',
+        is_active: true,
+      },
+      { onConflict: 'name' }
+    );
+
+    // 4. Audit Log
+    await recordRemoteAuditLog(
+      'SEED_DATABASE',
+      '관리자가 슬롯, 공휴일, 8+1 시나리오 마스터 데이터를 공유 DB에 전체 업로드함'
+    );
+
+    return {
+      success: true,
+      message: '공유 데이터베이스(Supabase)에 모든 슬롯, 공휴일, 시나리오 데이터가 성공적으로 저장되었습니다!',
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `DB 저장 중 오류 발생: ${err.message}`,
+    };
   }
 }
