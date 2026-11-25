@@ -69,6 +69,7 @@ flowchart TD
 ```
 
 ### 2.1 프론트엔드 (GitHub Pages 정적 배포)
+
 - **프레임워크**: React 19 + Vite 6 + TypeScript + Tailwind CSS (PWA 지원, 모바일 홈 화면 추가)
 - **배포 설정**: `vite.config.ts`의 `base: '/RadShift-K34/'`, `HashRouter` 사용
 - **엑셀 내보내기**: `xlsx` 라이브러리로 원본 양식 시트 3종(월별 가로 매트릭스 + 2026 vs 2027 비교표 + 크레딧 정산표) 다운로드 지원
@@ -78,6 +79,7 @@ flowchart TD
   - 로그인 전에는 완전 빈 인증 화면(Login UI)만 렌더링.
 
 ### 2.2 백엔드 (Supabase 무료 티어)
+
 - **Supabase Auth**: 이메일/비밀번호 로그인 + 관리자 승인제 (`status = 'pending'` $\rightarrow$ 관리자가 L1/L2/L3 권한 부여 후 `'approved'`로 변경)
 - **PostgreSQL RLS (Row Level Security)**: DB 레벨에서 `auth.uid()`가 존재하고 `profiles.status = 'approved'`인 사용자만 데이터 조회 가능하도록 차단
 - **Supabase Edge Functions (Deno/TypeScript)**:
@@ -90,6 +92,7 @@ flowchart TD
 ## 3. 핵심 교대근무 규칙 엔진 수학적 명세
 
 ### 3.1 기본 인원 및 일일 커버리지 불변식
+
 - 총 9명: 3호기 교대조 4명 + 4호기 교대조 4명 + 통상 Day(Float) 1명.
 - 일일 커버리지 불변식:
   - 3호기: D 1명, A 1명, N 1명
@@ -153,6 +156,7 @@ flowchart LR
 ---
 
 ### 3.3 21일(3주) 통상 Day 순환 및 일요일 경계일 조정 규칙
+
 - 통상 Day는 항상 월요일 시작 ~ 3주 뒤 일요일 종료 (21일 블록).
 - 순번은 9칸 큐 순서대로 순환 이동하며, 퇴장자는 진입자의 소속 호기와 위상을 그대로 승계함.
 - **경계일(블록 20일차 일요일 / 21일차 월요일) 전이 규칙**:
@@ -187,7 +191,7 @@ flowchart LR
 ```mermaid
 timeline
     title 2027년 교대체제 타임라인
-    2027-01-01 : Slot 5 나상흠 -> 박상현 개명
+    2027-01-01 : Slot 5 나상흠 -> 박상현 변경(나상흠 임피로 인한 신규인원 투입)
                : Slot 1 최창호 임피 결원 (8인 돌입)
                : Slot 8 신욱제 -> Slot 1 임시 대체
     2027-01-04 : 방안부 지원조 투입 (8+1 체제 개시)
@@ -195,7 +199,7 @@ timeline
                : 주말/공휴일 방안부 OFF -> Phase-11 X->D 대휴 적립
     2027-02-01 : 84일 큐 순환 시프트 (송명관 4->3, 임원택 3->4)
                : 2/2 화요일 임원택 3N 보정 (최대연속 3일 보장)
-    2027-03-08 : 신규 인원 이재겸 Slot 1 투입 (9인 복원)
+    2027-03-08 : 신규 인원 이재겸 신욱제 슬롯 투입 및 신욱제 본래 큐 복원 (9인 복원)
                : 이재겸 3/8 4D 인수인계 커버
                : 신욱제 3/8 X 휴무 후 본래 큐 복귀하여 잔여 14일 통상 완료
     2027-03-22 : Slot 9 송명관 정규 21일 통상 순환 재개
@@ -214,6 +218,7 @@ timeline
 ## 4. 데이터베이스 스키마 명세 (Supabase PostgreSQL)
 
 ### 4.1 테이블 명세
+
 1. `profiles`: 사용자 계정 및 권한 (`id`, `email`, `display_name`, `alias_code`, `role`, `status`, `slot_no`, `telegram_user_id`, `created_at`)
 2. `rotation_slots`: 9개 슬롯 및 원형 큐 인원 매핑 (`slot_no`, `member_name`, `effective_from`, `effective_to`, `note`)
 3. `scenarios`: 범용 시나리오 설정 (`id`, `name`, `mode`, `start_date`, `end_date`, `vacant_slot_no`, `temp_cover_slot_no`, `support_name`, `support_start_date`, `support_end_date`, `restore_remaining_days`, `enforce_84d_transfer`, `queue_state`, `is_active`, `created_at`)
@@ -224,6 +229,7 @@ timeline
 8. `audit_logs`: 관리자 수정 및 승인 감사 로그 (`id`, `actor_id`, `action_type`, `before_json`, `after_json`, `reason`, `created_at`)
 
 ### 4.2 Row Level Security (RLS) 정책
+
 - 모든 테이블에 RLS 활성화.
 - `auth.uid()` 인증 및 `profiles.status = 'approved'` 사용자만 SELECT 허용.
 - 관리자 권한(`role = 'L3_ADMIN'`) 사용자만 INSERT/UPDATE/DELETE 허용.
@@ -233,17 +239,21 @@ timeline
 ## 5. 실시간 제약조건 검증기 및 범용 관리자 시뮬레이터 설계 명세
 
 ### 5.1 Hard Constraints (위반 시 저장 원천 차단)
+
 1. 3호기(D,A,N) 및 4호기(D,A,N) 각 1명 미만 커버리지 부족.
 2. 역순환(Quick Return): N/A/3N 근무 직후 익일 D/3D/4D 배정.
 3. 1인 동일 일자 중복 근무 배정.
 4. 방안부 일근 지원조의 주말/법정공휴일/대체공휴일 배정.
 
 ### 5.2 Soft Constraints (황색 경고 후 관리자 확인 시 허용)
+
 1. 연속 근무 4일 이상 (`consecutive_days >= 4`).
 2. 월간 개인별 근무일 편차 $\pm 2$일 초과 또는 미정산 크레딧 3일 초과.
 
 ### 5.3 대근자 Top 3 자동 추천 알고리즘
+
 $$\text{Score} = 100 \times \text{IsPhase11} + 50 \times \text{SameUnit} - 10 \times \text{MonthlyShifts} - 20 \times \text{ReliefCount} - 5 \times \text{CreditBalance}$$
+
 - Hard Filter: 당일 X 휴무자 중 투입 후 최대 연속근무 3일 이하 및 역순환이 발생하지 않는 후보자만 필터링 후 점수순 정렬.
 
 ---
@@ -301,6 +311,7 @@ flowchart TD
 ```
 
 #### 1) 입력·선택 UI 파라미터 규격
+
 1. **쉬프트 모드 선택**:
    - `NORMAL_9`: 9인 정상 운영 모드
    - `EIGHT_PLUS_DAYTIME`: 8+1 방안부 일근 지원 모드
@@ -318,6 +329,7 @@ flowchart TD
    - `법정공휴일/대체공휴일 DB 자동 반영 여부` (기본값 ON)
 
 #### 2) 시뮬레이션 결과 미리보기(Diff) 및 규칙 준수 수동 미세 조정
+
 1. **시뮬레이션 실행 결과 출력 항목**:
    - 변경 전/후 근무표 Diff 하이라이트 (교체 셀 강조 표시)
    - 9칸 원형 큐의 호기별 배치 및 시프트 상태 변화 시각화
