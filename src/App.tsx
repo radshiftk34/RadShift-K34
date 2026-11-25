@@ -108,7 +108,6 @@ export default function App() {
         currentRole={currentRole}
         onRoleChange={(role) => setCurrentRole(role)}
         year={year}
-        onYearChange={setYear}
         anonymize={anonymize}
         onToggleAnonymize={() => setAnonymize((v) => !v)}
         activeTab={activeTab}

@@ -1,12 +1,22 @@
 {
-  "version": "1.5.1",
+  "version": "1.5.2",
   "releaseDate": "2026-11-26",
-  "buildNumber": 13,
+  "buildNumber": 14,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.2",
+      "date": "2026-11-26",
+      "build": 14,
+      "title": "상단 헤더 연도 전환 버튼(2026년 / 2027년(8+1)) 제거 및 버전 동적 바인딩",
+      "notes": [
+        "상단 헤더의 2026년 / 2027년 (8+1) 연도 전환 버튼 제거 (월간 및 연간 근무표 뷰의 자체 네비게이션으로 일원화)",
+        "상단 헤더 버전 배지를 version.json과 연동하여 동적 표출"
+      ]
+    },
     {
       "version": "1.5.1",
       "date": "2026-11-26",

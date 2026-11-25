@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserRole } from '../services/supabaseClient';
+import versionData from '../../version.json';
 import {
   Calendar,
   Shield,
@@ -18,8 +19,7 @@ import {
 interface HeaderProps {
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
-  year: number;
-  onYearChange: (year: number) => void;
+  year?: number;
   anonymize: boolean;
   onToggleAnonymize: () => void;
   activeTab: string;
@@ -33,8 +33,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   currentRole,
   onRoleChange,
-  year,
-  onYearChange,
+  year = 2026,
   anonymize,
   onToggleAnonymize,
   activeTab,
@@ -64,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
                   title="버전 정보 및 업데이트 내역 보기"
                 >
-                  v1.4.0
+                  v{versionData.version}
                 </button>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
                   {year === 2026 ? '2026 정상 9인' : '2027 8+1 지원'}
@@ -78,30 +77,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Quick Controls */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Year Toggle */}
-            <div className="bg-slate-100 p-1 rounded-lg flex text-xs font-medium">
-              <button
-                onClick={() => onYearChange(2026)}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  year === 2026
-                    ? 'bg-white text-brand-700 shadow-sm font-semibold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                2026년
-              </button>
-              <button
-                onClick={() => onYearChange(2027)}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  year === 2027
-                    ? 'bg-white text-brand-700 shadow-sm font-semibold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                2027년 (8+1)
-              </button>
-            </div>
-
             {/* Anonymize Toggle */}
             <button
               onClick={onToggleAnonymize}
