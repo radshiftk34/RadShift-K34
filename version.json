@@ -1,12 +1,23 @@
 {
-  "version": "1.5.8",
+  "version": "1.5.9",
   "releaseDate": "2026-11-26",
-  "buildNumber": 20,
+  "buildNumber": 21,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.9",
+      "date": "2026-11-26",
+      "build": 21,
+      "title": "월간 근무표 가로 스크롤 제거 및 오늘(Today) 강조 하이라이트 UI 대폭 강화",
+      "notes": [
+        "월간 근무표(메인)의 날짜별 열 및 셀 크기를 최적화(w-7 min-w-[24px])하여 모든 모니터 환경에서 가로 스크롤바 없이 한눈에 표출",
+        "오늘(Today) 컬럼을 상단 헤더(오늘 뱃지+날짜+요일)부터 본문 전체 셀까지 일체형 하이라이트 기둥(border-x-2 border-brand-500 및 bg-blue-100)으로 시각화",
+        "오늘 근무 배지 강조 링(ring-2 ring-brand-600) 및 확대 효과(scale-110) 적용으로 당일 근무자 상태 즉각 식별 가능"
+      ]
+    },
     {
       "version": "1.5.8",
       "date": "2026-11-26",

@@ -493,11 +493,11 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs divide-y divide-slate-200 border-collapse">
+          <table className="w-full text-xs divide-y divide-slate-200 border-collapse table-auto">
             <thead>
               {/* Row 1: Day numbers */}
               <tr className="bg-[#ccfbf1]/50 text-slate-800">
-                <th className="sticky left-0 z-20 bg-[#ccfbf1] px-3 py-2 text-left font-bold w-36 border-r border-slate-300 shadow-xs">
+                <th className="sticky left-0 z-20 bg-[#ccfbf1] px-2.5 py-1.5 text-left font-bold w-32 min-w-[120px] border-r border-slate-300 shadow-xs whitespace-nowrap">
                   호기 / 성명
                 </th>
                 {monthDays.map((d) => {
@@ -511,35 +511,39 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
                     <th
                       key={d.dateStr}
                       ref={isToday ? todayHeaderRef : undefined}
-                      className={`px-1 py-1.5 text-center min-w-[32px] border-r border-slate-200 transition-all ${
+                      className={`px-0.5 py-1 text-center w-7 min-w-[24px] max-w-[28px] transition-all ${
                         isToday
-                          ? 'bg-brand-500 text-white font-black ring-2 ring-brand-400 z-10 shadow-md'
+                          ? 'bg-brand-600 text-white font-black border-x-2 border-t-2 border-brand-600 z-10 shadow-md ring-2 ring-brand-400'
                           : isHol || isSun
-                          ? 'bg-red-100/70 text-red-700 font-extrabold'
+                          ? 'bg-red-100/70 text-red-700 font-extrabold border-r border-slate-200'
                           : isSat
-                          ? 'bg-blue-100/70 text-blue-700 font-extrabold'
-                          : 'text-slate-800 font-bold'
+                          ? 'bg-blue-100/70 text-blue-700 font-extrabold border-r border-slate-200'
+                          : 'text-slate-800 font-bold border-r border-slate-200'
                       }`}
                     >
                       <div className="flex flex-col items-center justify-center">
-                        {isToday && (
-                          <span className="text-[9px] font-black bg-white text-brand-700 px-1 rounded-sm leading-tight mb-0.5 shadow-xs">
-                            오늘
-                          </span>
+                        {isToday ? (
+                          <>
+                            <span className="text-[8.5px] font-black bg-amber-300 text-slate-950 px-1 rounded-sm leading-tight mb-0.5 shadow-xs tracking-tighter">
+                              오늘
+                            </span>
+                            <span className="text-xs font-black text-white leading-tight">{dayNum}</span>
+                          </>
+                        ) : (
+                          <span className="text-xs">{dayNum}</span>
                         )}
-                        <span>{dayNum}</span>
                       </div>
                     </th>
                   );
                 })}
-                <th className="px-3 py-2 text-center font-bold bg-[#ccfbf1] text-slate-800 border-l border-slate-300 min-w-[130px]">
+                <th className="px-2 py-1.5 text-center font-bold bg-[#ccfbf1] text-slate-800 border-l border-slate-300 w-28 min-w-[105px] whitespace-nowrap">
                   월 합계 (D/A/N)
                 </th>
               </tr>
 
               {/* Row 2: Days of Week */}
               <tr className="bg-[#ccfbf1]/30 text-slate-700 border-b border-slate-300">
-                <th className="sticky left-0 z-20 bg-[#ccfbf1]/40 px-3 py-1 text-left font-semibold text-[11px] border-r border-slate-300 shadow-xs">
+                <th className="sticky left-0 z-20 bg-[#ccfbf1]/40 px-2.5 py-0.5 text-left font-semibold text-[11px] border-r border-slate-300 shadow-xs whitespace-nowrap">
                   84일 주기 구분
                 </th>
                 {monthDays.map((d) => {
@@ -552,21 +556,21 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
                   return (
                     <th
                       key={`dow_${d.dateStr}`}
-                      className={`px-1 py-1 text-center font-bold text-[10px] border-r border-slate-200 ${
+                      className={`px-0.5 py-0.5 text-center font-bold text-[10px] ${
                         isToday
-                          ? 'bg-brand-600 text-white'
+                          ? 'bg-brand-700 text-amber-200 font-black border-x-2 border-brand-600'
                           : isHol || isSun
-                          ? 'text-red-600 bg-red-50'
+                          ? 'text-red-600 bg-red-50 border-r border-slate-200'
                           : isSat
-                          ? 'text-blue-600 bg-blue-50'
-                          : 'text-slate-600'
+                          ? 'text-blue-600 bg-blue-50 border-r border-slate-200'
+                          : 'text-slate-600 border-r border-slate-200'
                       }`}
                     >
                       {dowText}
                     </th>
                   );
                 })}
-                <th className="px-3 py-1 text-center font-semibold text-[10px] bg-[#ccfbf1]/40 text-slate-600 border-l border-slate-300">
+                <th className="px-2 py-0.5 text-center font-semibold text-[10px] bg-[#ccfbf1]/40 text-slate-600 border-l border-slate-300 w-28 min-w-[105px] whitespace-nowrap">
                   총 근무일
                 </th>
               </tr>
@@ -586,8 +590,8 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
                 return (
                   <tr key={row.id} className="hover:bg-slate-50 transition-colors">
                     {/* Sticky Unit & Name Column */}
-                    <td className="sticky left-0 z-10 bg-white px-3 py-2 font-bold text-slate-900 border-r border-slate-200 shadow-xs whitespace-nowrap">
-                      <div className="flex items-center space-x-1.5">
+                    <td className="sticky left-0 z-10 bg-white px-2.5 py-1 font-bold text-slate-900 border-r border-slate-200 shadow-xs whitespace-nowrap w-32 min-w-[120px]">
+                      <div className="flex items-center space-x-1.5 whitespace-nowrap">
                         <span
                           className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-black border ${unitBadgeStyle}`}
                         >
@@ -597,7 +601,7 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
                           {displayName}
                         </span>
                         {row.slotNo && (
-                          <span className="text-[10px] text-slate-400 font-medium">
+                          <span className="text-[10px] text-slate-400 font-semibold">
                             S{row.slotNo}
                           </span>
                         )}
@@ -625,15 +629,21 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
                               });
                             }
                           }}
-                          className={`p-0.5 text-center border-r border-slate-200 transition-colors ${
-                            isToday ? 'bg-brand-50/70 ring-1 ring-brand-400' : ''
+                          className={`px-0 py-0.5 text-center transition-colors ${
+                            isToday
+                              ? 'bg-blue-100/60 border-x-2 border-brand-500 shadow-inner'
+                              : 'border-r border-slate-200'
                           } ${canEdit ? 'cursor-pointer hover:bg-purple-50' : ''}`}
                         >
                           {s.code ? (
                             <span
-                              className={`inline-flex items-center justify-center w-7 h-7 rounded-md text-[11px] border leading-none transition-transform hover:scale-110 ${badgeStyle} ${
+                              className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] sm:text-[11px] border leading-none transition-transform hover:scale-110 ${badgeStyle} ${
                                 s.isOverridden ? 'ring-2 ring-purple-600 font-black shadow-xs' : ''
-                              } ${isToday ? 'ring-2 ring-brand-500 font-black' : ''}`}
+                              } ${
+                                isToday
+                                  ? 'ring-2 ring-brand-600 ring-offset-1 font-black shadow-md scale-110'
+                                  : ''
+                              }`}
                               title={`${s.dateStr} [${row.unitLabel}] ${displayName}: ${s.code}${
                                 s.isOverridden ? ' (수동 수정됨)' : ''
                               }${isToday ? ' [오늘]' : ''}`}
@@ -648,11 +658,11 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
                     })}
 
                     {/* Monthly Summary */}
-                    <td className="px-3 py-2 text-center font-mono text-[11px] font-bold text-slate-700 bg-slate-50/60 border-l border-slate-200 whitespace-nowrap">
-                      <span className="text-sky-700">{row.dCount}D</span> /{' '}
-                      <span className="text-amber-700">{row.aCount}A</span> /{' '}
-                      <span className="text-purple-700">{row.nCount}N</span>{' '}
-                      <span className="text-slate-900 font-extrabold">({row.totalWork}일)</span>
+                    <td className="px-2 py-1 text-center font-mono text-[10.5px] font-bold text-slate-700 bg-slate-50/60 border-l border-slate-200 whitespace-nowrap w-28 min-w-[105px]">
+                      <span className="text-sky-700 font-extrabold">{row.dCount}D</span> /{' '}
+                      <span className="text-amber-700 font-extrabold">{row.aCount}A</span> /{' '}
+                      <span className="text-purple-700 font-extrabold">{row.nCount}N</span>{' '}
+                      <span className="text-slate-900 font-black">({row.totalWork}일)</span>
                     </td>
                   </tr>
                 );
