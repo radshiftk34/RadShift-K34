@@ -191,17 +191,13 @@ export const Header: React.FC<HeaderProps> = ({
             { id: 'leave', label: '휴가·대근 관리', icon: Users, badge: 'Top 3' },
             { id: 'scenario', label: '시뮬레이터 (원형 큐)', icon: RotateCw },
             { id: 'telegram', label: '텔레그램 봇 연동', icon: Bot },
-            ...(currentRole === 'L3_ADMIN'
-              ? [
-                  {
-                    id: 'members',
-                    label: '슬롯·인원 및 근무 관리',
-                    icon: Shield,
-                    badge: '관리자',
-                    highlight: true,
-                  },
-                ]
-              : []),
+            {
+              id: 'members',
+              label: '슬롯·인원 및 근무 관리',
+              icon: Shield,
+              badge: '관리자',
+              highlight: currentRole === 'L3_ADMIN',
+            },
             {
               id: 'onestep-test',
               label: '원스텝 종합 진단',

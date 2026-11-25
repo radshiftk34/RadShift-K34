@@ -1,12 +1,23 @@
 {
-  "version": "1.4.5",
+  "version": "1.4.6",
   "releaseDate": "2026-11-25",
-  "buildNumber": 10,
+  "buildNumber": 11,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.4.6",
+      "date": "2026-11-25",
+      "build": 11,
+      "title": "인원·근무 관리 메뉴 실행 런타임 오류 해결 및 상시 메뉴 접근성 보장",
+      "notes": [
+        "getDisplayName 미초기화 참조 오류(ReferenceError in TDZ) 해결 및 최상단 함수 재배치",
+        "activeSlotMembers 및 rotatedQueueSlots 안전 참조(fallback) 가드 보강",
+        "상단 네비게이션에 '슬롯·인원 및 근무 관리' 탭 상시 노출 및 권한 미충족 시 1-클릭 L3 관리자 전환 버튼 제공"
+      ]
+    },
     {
       "version": "1.4.5",
       "date": "2026-11-25",

@@ -106,12 +106,7 @@ export default function App() {
       {/* Top Header */}
       <Header
         currentRole={currentRole}
-        onRoleChange={(role) => {
-          setCurrentRole(role);
-          if (role !== 'L3_ADMIN' && activeTab === 'members') {
-            setActiveTab('matrix');
-          }
-        }}
+        onRoleChange={(role) => setCurrentRole(role)}
         year={year}
         onYearChange={setYear}
         anonymize={anonymize}
@@ -189,6 +184,7 @@ export default function App() {
             onCommitSchedule={(newOverrides) =>
               setOverrides((prev) => ({ ...prev, ...newOverrides }))
             }
+            onRoleChange={setCurrentRole}
           />
         )}
 

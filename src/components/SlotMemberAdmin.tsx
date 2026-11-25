@@ -51,6 +51,7 @@ export interface SlotMemberAdminProps {
   onToggleAnonymize: () => void;
   year: number;
   onCommitSchedule?: (overrides: Record<string, any>, auditMsg: string) => void;
+  onRoleChange?: (role: UserRole) => void;
 }
 
 export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
@@ -59,7 +60,14 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
   onToggleAnonymize,
   year,
   onCommitSchedule,
+  onRoleChange,
 }) => {
+  // Pure display name helper placed upfront to prevent unhoisted ReferenceError
+  const getDisplayName = (slotNo: number, name: string) => {
+    if (!anonymize) return name;
+    return `HP-0${slotNo}`;
+  };
+
   // Access Control Guard: Only L3_ADMIN
   if (currentRole !== 'L3_ADMIN') {
     return (
@@ -73,9 +81,17 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
         <p className="text-sm text-slate-500 leading-relaxed">
           본 페이지(슬롯별 HP 인원·근무 관리, 8+1 모드, 공휴일 관리 및 시뮬레이션 확정)는
           최고 관리자(L3_ADMIN)만 접근 및 수정이 가능합니다.
-          <br />
-          화면 상단 우측의 권한 선택기에서 <span className="font-bold text-purple-700">'L3 관리자'</span>를 선택해 주세요.
         </p>
+        {onRoleChange && (
+          <div className="pt-2">
+            <button
+              onClick={() => onRoleChange('L3_ADMIN')}
+              className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-md transition-all hover:scale-105"
+            >
+              L3 관리자 권한으로 즉시 전환하기
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -334,19 +350,34 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
       const is3U = displaySlotNo <= 4;
       const slotData = activeSlotMembers[origSlotNo];
-      const activeMem = slotData.member;
-      const hasConflict = slotData.hasConflict;
+      const activeMem = slotData?.member || {
+        id: `m-fallback-${origSlotNo}`,
+        slotNo: origSlotNo,
+        unit: origSlotNo <= 4 ? ('3호기' as const) : ('4호기' as const),
+        name: `Slot ${origSlotNo}`,
+        phone: '-',
+        telegramId: '-',
+        email: '-',
+        workStartDate: targetDate,
+        workEndDate: '9999-12-31',
+        terminationReason: '정상 근무',
+        status: '재직중' as const,
+        role: 'L2_HP' as const,
+        accountStatus: 'approved' as const,
+      };
+      const hasConflict = Boolean(slotData?.hasConflict);
 
-      const memberDisplayName = hasConflict
-        ? slotData.allActive.map((m) => getDisplayName(origSlotNo, m.name)).join(' / ')
-        : getDisplayName(origSlotNo, activeMem.name);
+      const memberDisplayName =
+        hasConflict && slotData?.allActive
+          ? slotData.allActive.map((m) => getDisplayName(origSlotNo, m.name)).join(' / ')
+          : getDisplayName(origSlotNo, activeMem.name);
 
       return {
         displaySlotNo, // 현재 화면상 슬롯 위치 (1~9)
         displayUnit: is3U ? ('3호기' as const) : ('4호기' as const),
         origSlotNo, // 원래 기준 슬롯 번호
         member: activeMem,
-        allActive: slotData.allActive,
+        allActive: slotData?.allActive || [],
         hasConflict,
         memberDisplayName,
       };
@@ -618,11 +649,6 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     alert(res.message);
   };
 
-  const getDisplayName = (slotNo: number, name: string) => {
-    if (anonymize) return `HP-0${slotNo}`;
-    return name;
-  };
-
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -665,8 +691,8 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
             <button
               onClick={onToggleAnonymize}
               className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center space-x-1.5 transition-colors ${anonymize
-                  ? 'bg-purple-800 border-purple-500 text-purple-100'
-                  : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
+                ? 'bg-purple-800 border-purple-500 text-purple-100'
+                : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
                 }`}
             >
               <span>{anonymize ? '익명(HP-01)' : '실명 표시'}</span>
@@ -689,8 +715,8 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 key={tab.id}
                 onClick={() => setActiveSubTab(tab.id as any)}
                 className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl transition-all ${isActive
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
                   }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -790,20 +816,18 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 return (
                   <div
                     key={displaySlotNo}
-                    className={`rounded-2xl p-3 border transition-all hover:shadow-md ${
-                      hasConflict
-                        ? 'bg-rose-50/70 border-rose-300 ring-2 ring-rose-200'
-                        : is3U
+                    className={`rounded-2xl p-3 border transition-all hover:shadow-md ${hasConflict
+                      ? 'bg-rose-50/70 border-rose-300 ring-2 ring-rose-200'
+                      : is3U
                         ? 'bg-blue-50/50 border-blue-200'
                         : 'bg-emerald-50/50 border-emerald-200'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center space-x-1">
                         <span
-                          className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
-                            is3U ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white'
-                          }`}
+                          className={`text-[10px] font-black px-1.5 py-0.5 rounded ${is3U ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white'
+                            }`}
                         >
                           S{displaySlotNo}
                         </span>
@@ -823,9 +847,8 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                           </span>
                         )}
                         <span
-                          className={`text-[10px] font-bold ${
-                            is3U ? 'text-blue-700' : 'text-emerald-700'
-                          }`}
+                          className={`text-[10px] font-bold ${is3U ? 'text-blue-700' : 'text-emerald-700'
+                            }`}
                         >
                           {slotItem.displayUnit}
                         </span>
@@ -833,9 +856,8 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     </div>
 
                     <div
-                      className={`font-extrabold text-sm tracking-tight truncate ${
-                        hasConflict ? 'text-rose-900 font-black' : 'text-slate-900'
-                      }`}
+                      className={`font-extrabold text-sm tracking-tight truncate ${hasConflict ? 'text-rose-900 font-black' : 'text-slate-900'
+                        }`}
                       title={displayName}
                     >
                       {displayName}
@@ -847,9 +869,8 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
                     <div className="mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
                       <span
-                        className={`font-medium truncate max-w-[65px] ${
-                          hasConflict ? 'text-rose-700 font-bold' : 'text-slate-400'
-                        }`}
+                        className={`font-medium truncate max-w-[65px] ${hasConflict ? 'text-rose-700 font-bold' : 'text-slate-400'
+                          }`}
                       >
                         {hasConflict ? '수정필요' : activeMem.status}
                       </span>
@@ -896,16 +917,16 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 getConflictingMembers(m.id, m.slotNo, m.workStartDate, m.workEndDate)
                   .length > 0
             ) && (
-              <div className="mx-5 my-4 p-3.5 bg-rose-50 border border-rose-300 rounded-xl flex items-center justify-between text-xs text-rose-950">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>
-                    <strong>[근무 기간 중복 안내]</strong> 현재 동일 슬롯에 근무 기간이 겹치는 인원이 존재합니다.
-                    아래 이력 목록의 <strong>비고</strong> 안내를 확인하고 기간을 수정해 주세요.
-                  </span>
+                <div className="mx-5 my-4 p-3.5 bg-rose-50 border border-rose-300 rounded-xl flex items-center justify-between text-xs text-rose-950">
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>
+                      <strong>[근무 기간 중복 안내]</strong> 현재 동일 슬롯에 근무 기간이 겹치는 인원이 존재합니다.
+                      아래 이력 목록의 <strong>비고</strong> 안내를 확인하고 기간을 수정해 주세요.
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Table */}
             <div className="overflow-x-auto">
@@ -946,19 +967,17 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                       return (
                         <tr
                           key={m.id}
-                          className={`transition-colors ${
-                            hasConflict
-                              ? 'bg-rose-50/40 hover:bg-rose-50/70'
-                              : 'hover:bg-slate-50'
-                          }`}
+                          className={`transition-colors ${hasConflict
+                            ? 'bg-rose-50/40 hover:bg-rose-50/70'
+                            : 'hover:bg-slate-50'
+                            }`}
                         >
                           <td className="px-3 py-2.5 text-center font-black font-mono">
                             <span
-                              className={`px-2 py-0.5 rounded text-[11px] ${
-                                is3U
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-emerald-100 text-emerald-800'
-                              }`}
+                              className={`px-2 py-0.5 rounded text-[11px] ${is3U
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                                }`}
                             >
                               Slot {m.slotNo}
                             </span>
@@ -1039,13 +1058,12 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                m.status === '재직중'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : m.status === '임금피크'
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.status === '재직중'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : m.status === '임금피크'
                                   ? 'bg-amber-100 text-amber-800'
                                   : 'bg-slate-100 text-slate-600'
-                              }`}
+                                }`}
                             >
                               {m.status}
                             </span>
@@ -1145,8 +1163,8 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                   </span>
                   <span
                     className={`text-[10px] font-black px-2 py-0.5 rounded-full ${autoBackupInfo.isManual
-                        ? 'bg-purple-100 text-purple-800 border border-purple-300'
-                        : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                      : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                       }`}
                   >
                     {autoBackupInfo.isManual ? '관리자 수동 지정' : '알고리즘 자동 선정'}
@@ -1351,8 +1369,8 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     <td className="px-4 py-2 text-center">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${h.isSubstitute
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : 'bg-red-50 text-red-700 border border-red-200'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-red-50 text-red-700 border border-red-200'
                           }`}
                       >
                         {h.isSubstitute ? '대체공휴일' : '법정공휴일'}

@@ -316,9 +316,8 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({ schedule, anonym
             return (
               <div
                 key={d.dateStr}
-                className={`p-2.5 rounded-xl border text-center transition-all flex flex-col justify-between ${
-                  isToday ? 'border-brand-500 ring-2 ring-brand-400/20 bg-brand-50/30' : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
+                className={`p-2.5 rounded-xl border text-center transition-all flex flex-col justify-between ${isToday ? 'border-brand-500 ring-2 ring-brand-400/20 bg-brand-50/30' : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
               >
                 <div>
                   <span className="text-[10px] text-slate-400 font-semibold block">
