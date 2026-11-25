@@ -175,12 +175,17 @@ export const Header: React.FC<HeaderProps> = ({
               badge: '관리자',
               highlight: currentRole === 'L3_ADMIN',
             },
-            {
-              id: 'onestep-test',
-              label: '원스텝 종합 진단',
-              icon: Cpu,
-              badge: '10종 전수',
-            },
+            ...(currentRole === 'L3_ADMIN'
+              ? [
+                  {
+                    id: 'onestep-test',
+                    label: '원스텝 종합 진단',
+                    icon: Cpu,
+                    badge: 'L3 전용',
+                    highlight: true,
+                  },
+                ]
+              : []),
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

@@ -1,12 +1,22 @@
 {
-  "version": "1.5.3",
+  "version": "1.5.4",
   "releaseDate": "2026-11-26",
-  "buildNumber": 15,
+  "buildNumber": 16,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.4",
+      "date": "2026-11-26",
+      "build": 16,
+      "title": "원스텝 종합 진단 메뉴 L3 관리자 전용 권한 제어 적용",
+      "notes": [
+        "상단 네비게이션 탭의 '원스텝 종합 진단' 메뉴를 L3 관리자(L3_ADMIN) 로그인 상태에서만 노출되도록 제어",
+        "비인가 역할(L1, L2)에서는 해당 탭 접근을 차단하고, 권한 변경 시 메인 근무표 화면으로 자동 복귀"
+      ]
+    },
     {
       "version": "1.5.3",
       "date": "2026-11-26",

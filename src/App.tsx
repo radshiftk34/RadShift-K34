@@ -102,6 +102,13 @@ export default function App() {
     exportScheduleToExcel(schedule2026, schedule2027, year);
   };
 
+  // Auto-redirect if current activeTab is L3 only and role changes to non-L3
+  useEffect(() => {
+    if (activeTab === 'onestep-test' && currentRole !== 'L3_ADMIN') {
+      setActiveTab('matrix');
+    }
+  }, [activeTab, currentRole]);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900">
       {/* Top Header */}
@@ -190,7 +197,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'onestep-test' && (
+        {activeTab === 'onestep-test' && currentRole === 'L3_ADMIN' && (
           <OneStepTestModule engine={engine} />
         )}
       </main>
