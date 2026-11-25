@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ShiftEngine } from './engine/shiftEngine';
 import { ShiftCode } from './engine/types';
 import { UserRole } from './services/supabaseClient';
@@ -13,7 +13,13 @@ import { SlotMemberAdmin } from './components/SlotMemberAdmin';
 import { OneStepTestModule } from './components/OneStepTestModule';
 import { AuthModal } from './components/AuthModal';
 import { VersionModal } from './components/VersionModal';
+import { DbConnectionModal } from './components/DbConnectionModal';
 import { exportScheduleToExcel } from './utils/excelExport';
+import {
+  checkDbConnection,
+  fetchRemoteOverrides,
+  saveRemoteOverride,
+} from './services/dbSyncService';
 
 export default function App() {
   const engine = useMemo(() => new ShiftEngine(), []);
@@ -30,12 +36,37 @@ export default function App() {
   const [anonymize, setAnonymize] = useState<boolean>(false);
   const [overrides, setOverrides] = useState<Record<string, ShiftCode>>({});
   const [isVersionModalOpen, setIsVersionModalOpen] = useState<boolean>(false);
+  const [isDbConnected, setIsDbConnected] = useState<boolean>(false);
+  const [isDbModalOpen, setIsDbModalOpen] = useState<boolean>(false);
+
+  // Initial DB connection & sync
+  const refreshRemoteData = useCallback(() => {
+    checkDbConnection().then((res) => {
+      setIsDbConnected(res.isConnected);
+      if (res.isConnected) {
+        fetchRemoteOverrides().then((remoteOverrides) => {
+          if (Object.keys(remoteOverrides).length > 0) {
+            setOverrides((prev) => ({ ...prev, ...remoteOverrides }));
+          }
+        });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    refreshRemoteData();
+  }, [refreshRemoteData]);
 
   const activeSchedule = year === 2026 ? schedule2026 : schedule2027;
 
   // Handlers
-  const handleApplyOverride = (key: string, newCode: ShiftCode) => {
+  const handleApplyOverride = (key: string, newCode: ShiftCode, note?: string) => {
     setOverrides((prev) => ({ ...prev, [key]: newCode }));
+    // Asynchronously persist to remote Supabase if connected
+    const [dateStr, slotNoStr] = key.split('_');
+    if (dateStr && slotNoStr) {
+      saveRemoteOverride(dateStr, parseInt(slotNoStr, 10), '', '', newCode, note);
+    }
   };
 
   const handleResetOverrides = () => {
@@ -85,6 +116,8 @@ export default function App() {
         onTabChange={setActiveTab}
         onExportExcel={handleExportExcel}
         onOpenVersionModal={() => setIsVersionModalOpen(true)}
+        isDbConnected={isDbConnected}
+        onOpenDbModal={() => setIsDbModalOpen(true)}
       />
 
       {/* Main Body */}
@@ -169,7 +202,7 @@ export default function App() {
               onClick={() => setIsVersionModalOpen(true)}
               className="ml-2 text-brand-600 hover:text-brand-800 underline font-semibold"
             >
-              버전 v1.3.0 (업데이트 내역)
+              버전 v1.4.0 (업데이트 내역)
             </button>
           </div>
           <div className="flex items-center space-x-4">
@@ -190,6 +223,13 @@ export default function App() {
       <VersionModal
         isOpen={isVersionModalOpen}
         onClose={() => setIsVersionModalOpen(false)}
+      />
+
+      {/* DB Connection Modal */}
+      <DbConnectionModal
+        isOpen={isDbModalOpen}
+        onClose={() => setIsDbModalOpen(false)}
+        onRefreshData={refreshRemoteData}
       />
     </div>
   );

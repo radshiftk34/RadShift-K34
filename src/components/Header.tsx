@@ -12,6 +12,7 @@ import {
   Cpu,
   RotateCw,
   FileSpreadsheet,
+  Database,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -25,6 +26,8 @@ interface HeaderProps {
   onTabChange: (tab: string) => void;
   onExportExcel: () => void;
   onOpenVersionModal: () => void;
+  isDbConnected?: boolean;
+  onOpenDbModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -38,6 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
   onTabChange,
   onExportExcel,
   onOpenVersionModal,
+  isDbConnected = false,
+  onOpenDbModal,
 }) => {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
@@ -116,6 +121,28 @@ export const Header: React.FC<HeaderProps> = ({
                 {anonymize ? '익명(HP-01)' : '실명 표시'}
               </span>
             </button>
+
+            {/* DB Connection Pill */}
+            {onOpenDbModal && (
+              <button
+                onClick={onOpenDbModal}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center space-x-1.5 transition-colors ${
+                  isDbConnected
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                }`}
+                title="공유 PostgreSQL 데이터베이스(Supabase) 연동 상태 확인 및 설정"
+              >
+                <Database className="w-3.5 h-3.5" />
+                <span
+                  className="w-2 h-2 rounded-full inline-block"
+                  style={{ backgroundColor: isDbConnected ? '#10b981' : '#f59e0b' }}
+                />
+                <span className="hidden sm:inline">
+                  {isDbConnected ? 'DB 연결됨' : 'DB 설정'}
+                </span>
+              </button>
+            )}
 
             {/* Excel Download Button */}
             <button
