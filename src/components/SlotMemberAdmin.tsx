@@ -86,9 +86,17 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
   >('slots');
 
   // ---------------------------------------------------------------------------
-  // 1. 기준일(Target Date) & 84일 주기 연동 상태
+  // 1. 기준일(Target Date) & 84일 주기 연동 상태: 오늘 날짜 기본 조회
   // ---------------------------------------------------------------------------
-  const [targetDate, setTargetDate] = useState<string>(`${year}-01-01`);
+  const todayDateStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const [targetDate, setTargetDate] = useState<string>(todayDateStr);
 
   // Calculate 84-day cycle start & end based on targetDate
   // Anchor = 2025-12-29 (Monday, d = 0)

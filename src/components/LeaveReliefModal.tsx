@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DaySchedule } from '../engine/types';
 import { UserRole } from '../services/supabaseClient';
 import { calculateReliefCandidates, ReliefCandidate } from '../engine/reliefEngine';
@@ -17,7 +17,24 @@ export const LeaveReliefModal: React.FC<LeaveReliefModalProps> = ({
   currentRole: _currentRole,
   onApplyRelief,
 }) => {
-  const [targetDateStr, setTargetDateStr] = useState<string>('2027-01-15');
+  const todayDateStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const defaultTargetDate = useMemo(() => {
+    if (schedule.some((s) => s.dateStr === todayDateStr)) return todayDateStr;
+    return schedule[0]?.dateStr || '2026-01-01';
+  }, [schedule, todayDateStr]);
+
+  const [targetDateStr, setTargetDateStr] = useState<string>(defaultTargetDate);
+
+  useEffect(() => {
+    setTargetDateStr(defaultTargetDate);
+  }, [defaultTargetDate]);
   const [requesterSlot, setRequesterSlot] = useState<number>(3); // e.g. Slot 3 박경욱
   const [leaveType, setLeaveType] = useState<string>('연차');
   const [reason, setReason] = useState<string>('개인 사유 연차 신청');

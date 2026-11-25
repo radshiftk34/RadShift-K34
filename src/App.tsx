@@ -28,8 +28,12 @@ export default function App() {
   const schedule2026 = useMemo(() => engine.generateSchedule('2026-01-01', '2026-12-31'), [engine]);
   const schedule2027 = useMemo(() => engine.generateSchedule('2027-01-01', '2027-12-31'), [engine]);
 
-  // UI State
-  const [year, setYear] = useState<number>(2027);
+  // UI State: Default to current year (2026 or 2027) based on today's real date
+  const defaultYear = useMemo(() => {
+    const curYear = new Date().getFullYear();
+    return curYear === 2027 ? 2027 : 2026;
+  }, []);
+  const [year, setYear] = useState<number>(defaultYear);
   const [activeTab, setActiveTab] = useState<string>('matrix');
   const [currentRole, setCurrentRole] = useState<UserRole>('L3_ADMIN');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true); // Pre-authenticated for review

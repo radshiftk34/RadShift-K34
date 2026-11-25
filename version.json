@@ -1,12 +1,24 @@
 {
-  "version": "1.4.3",
+  "version": "1.4.4",
   "releaseDate": "2026-11-25",
-  "buildNumber": 8,
+  "buildNumber": 9,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.4.4",
+      "date": "2026-11-25",
+      "build": 9,
+      "title": "페이지 초기 로딩 시 오늘 날짜 기준 자동 조회 및 포커스",
+      "notes": [
+        "월간 근무표(MonthlyMatrix) 초기 진입 시 오늘 연도 및 월 자동 선택 및 오늘 열 스크롤 포커스",
+        "당일 현황(TodayDashboard) 로딩 시 오늘 날짜 기준 교대조 자동 조회",
+        "슬롯 관리(SlotMemberAdmin) 진입 시 오늘 날짜 기준 84일 주기 및 원형 큐 자동 산출",
+        "휴가 및 대근 신청(LeaveReliefModal) 대상 일자 오늘 날짜 기본 지정"
+      ]
+    },
     {
       "version": "1.4.3",
       "date": "2026-11-25",

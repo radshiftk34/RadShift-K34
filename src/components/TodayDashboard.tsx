@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DaySchedule, ShiftCell } from '../engine/types';
 import { exportPersonalICalendar } from '../utils/icsExport';
 import { Calendar, Clock, Download, Search, ShieldCheck } from 'lucide-react';
@@ -10,10 +10,30 @@ interface TodayDashboardProps {
 }
 
 export const TodayDashboard: React.FC<TodayDashboardProps> = ({ schedule, anonymize, year }) => {
-  // Select reference date: default to first day or today
-  const defaultDateStr = year === 2026 ? '2026-03-02' : '2027-01-04';
+  // Current real-world date string (YYYY-MM-DD)
+  const todayDateStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  // Default to today if it exists in current schedule, otherwise schedule start
+  const defaultDateStr = useMemo(() => {
+    if (schedule.some((d) => d.dateStr === todayDateStr)) {
+      return todayDateStr;
+    }
+    return schedule[0]?.dateStr || `${year}-01-01`;
+  }, [schedule, todayDateStr, year]);
+
   const [selectedDateStr, setSelectedDateStr] = useState<string>(defaultDateStr);
   const [selectedSlot, setSelectedSlot] = useState<number>(1);
+
+  // Sync when schedule or year changes
+  useEffect(() => {
+    setSelectedDateStr(defaultDateStr);
+  }, [defaultDateStr]);
 
   const dayIndex = schedule.findIndex((d) => d.dateStr === selectedDateStr);
   const today = dayIndex >= 0 ? schedule[dayIndex] : schedule[0];

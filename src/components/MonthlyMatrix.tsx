@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { DaySchedule, ShiftCode } from '../engine/types';
 import { UserRole } from '../services/supabaseClient';
 import { validateProposedCellChange, ValidationResult } from '../engine/constraintValidator';
@@ -57,6 +57,29 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
     if (year === todayYear) return todayMonth;
     return 1;
   });
+
+  // When year changes, auto-switch to today's month if viewing current year
+  useEffect(() => {
+    if (year === todayYear) {
+      setSelectedMonth(todayMonth);
+    }
+  }, [year, todayYear, todayMonth]);
+
+  // Ref to today's column header to auto-scroll into center view on load
+  const todayHeaderRef = useRef<HTMLTableCellElement>(null);
+  useEffect(() => {
+    if (year === todayYear && selectedMonth === todayMonth && todayHeaderRef.current) {
+      // Delay slightly for table DOM render completion
+      const timer = setTimeout(() => {
+        todayHeaderRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          inline: 'center',
+          block: 'nearest',
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedMonth, year, todayYear, todayMonth]);
 
   const [unitFilter, setUnitFilter] = useState<'ALL' | '3U' | '4U' | 'SUPPORT'>('ALL');
 
@@ -409,6 +432,7 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
                   return (
                     <th
                       key={d.dateStr}
+                      ref={isToday ? todayHeaderRef : undefined}
                       className={`px-1 py-1.5 text-center min-w-[32px] border-r border-slate-200 transition-all ${
                         isToday
                           ? 'bg-brand-500 text-white font-black ring-2 ring-brand-400 z-10 shadow-md'
