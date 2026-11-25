@@ -1,12 +1,27 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "releaseDate": "2026-11-25",
-  "buildNumber": 1,
+  "buildNumber": 2,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
-  "gitCommit": "2e35486",
+  "gitCommit": "2944ed6",
   "updates": [
+    {
+      "version": "1.1.0",
+      "date": "2026-11-25",
+      "type": "minor",
+      "title": "9-cell Circular Queue & General Scenario Simulator Specification",
+      "highlights": [
+        "MINOR 정기 유지보수 및 업데이트 반영"
+      ],
+      "changes": {
+        "added": [],
+        "changed": [],
+        "fixed": [],
+        "security": []
+      }
+    },
     {
       "version": "1.0.0",
       "date": "2026-11-25",

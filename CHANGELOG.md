@@ -1,5 +1,15 @@
 # Changelog
 
+
+## [1.1.0] - 2026-11-25
+
+### 주요 내용 (Highlights)
+- MINOR 정기 유지보수 및 업데이트 반영
+
+
+
+
+
 이 프로젝트의 모든 주요 업데이트 내역은 본 문서에 기록됩니다.
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/) 규격과 [Semantic Versioning](https://semver.org/lang/ko/)을 따릅니다.
 
