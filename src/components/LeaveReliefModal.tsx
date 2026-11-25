@@ -55,6 +55,97 @@ export const LeaveReliefModal: React.FC<LeaveReliefModalProps> = ({
     setTargetDateStr(defaultTargetDate);
   }, [defaultTargetDate]);
 
+  // Monthly Calendar Navigation & Overrides State
+  const [calendarMonth, setCalendarMonth] = useState<string>(() => (defaultTargetDate ? defaultTargetDate.slice(0, 7) : '2026-12'));
+
+  useEffect(() => {
+    if (targetDateStr) {
+      const ym = targetDateStr.slice(0, 7);
+      if (ym !== calendarMonth) {
+        setCalendarMonth(ym);
+      }
+    }
+  }, [targetDateStr]);
+
+  const [calYear, calMonthNum] = useMemo(() => {
+    const parts = calendarMonth.split('-').map(Number);
+    return [parts[0] || 2026, parts[1] || 12];
+  }, [calendarMonth]);
+
+  const handlePrevMonth = () => {
+    let newYear = calYear;
+    let newMonth = calMonthNum - 1;
+    if (newMonth < 1) {
+      newYear -= 1;
+      newMonth = 12;
+    }
+    setCalendarMonth(`${newYear}-${String(newMonth).padStart(2, '0')}`);
+  };
+
+  const handleNextMonth = () => {
+    let newYear = calYear;
+    let newMonth = calMonthNum + 1;
+    if (newMonth > 12) {
+      newYear += 1;
+      newMonth = 1;
+    }
+    setCalendarMonth(`${newYear}-${String(newMonth).padStart(2, '0')}`);
+  };
+
+  const calendarDays = useMemo(() => {
+    const firstDate = new Date(calYear, calMonthNum - 1, 1);
+    const startDayOfWeek = firstDate.getDay(); // 0 = Sun
+    const lastDate = new Date(calYear, calMonthNum, 0);
+    const totalDaysInMonth = lastDate.getDate();
+
+    const days: Array<{
+      dateStr: string;
+      dayNum: number;
+      dayOfWeek: number;
+      isCurrentMonth: boolean;
+    } | null> = [];
+
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push(null);
+    }
+
+    for (let d = 1; d <= totalDaysInMonth; d++) {
+      const dateStr = `${calYear}-${String(calMonthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dow = (startDayOfWeek + d - 1) % 7;
+      days.push({
+        dateStr,
+        dayNum: d,
+        dayOfWeek: dow,
+        isCurrentMonth: true,
+      });
+    }
+
+    return days;
+  }, [calYear, calMonthNum]);
+
+  const getDayOverridesInfo = (dateStr: string) => {
+    const dayLeaves: string[] = [];
+    const dayReliefs: string[] = [];
+
+    Object.entries(overrides).forEach(([key, shiftCode]) => {
+      const [dStr, sNo] = key.split('_');
+      if (dStr === dateStr) {
+        const slot = Number(sNo);
+        const day = schedule.find((s) => s.dateStr === dateStr);
+        const member = day?.shifts.find((s) => s.slotNo === slot);
+        const memName = member ? getName(slot, member.memberName) : `S${slot}`;
+
+        if (shiftCode === '연차') {
+          dayLeaves.push(memName);
+        } else {
+          dayReliefs.push(`${memName}(${shiftCode})`);
+        }
+      }
+    });
+
+    return { dayLeaves, dayReliefs };
+  };
+
   const [requesterSlot, setRequesterSlot] = useState<number>(3);
   const [leaveType, setLeaveType] = useState<string>('연차');
   const [reason, setReason] = useState<string>('개인 사유 연차 신청');
@@ -266,12 +357,147 @@ export const LeaveReliefModal: React.FC<LeaveReliefModalProps> = ({
           </div>
         </div>
 
-        {/* Visual 9-Slot Selection Grid */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-700">
-              휴가 신청자를 클릭하여 선택하세요 (당일 근무 요원 자동 강조):
-            </span>
+        {/* 1-1. Monthly Calendar View (휴가자 및 대근자 현황 달력) */}
+        <div className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-3">
+          {/* Calendar Header */}
+          <div className="flex items-center justify-between px-1">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 bg-white shadow-xs transition-colors flex items-center space-x-1 cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>이전달</span>
+            </button>
+            <div className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+              {calYear}년 {calMonthNum}월
+            </div>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 bg-white shadow-xs transition-colors flex items-center space-x-1 cursor-pointer"
+            >
+              <span>다음달</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Weekday Labels (Sun~Sat) */}
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs font-black py-1.5 border-b border-slate-200">
+            <div className="text-rose-600">일</div>
+            <div className="text-slate-700">월</div>
+            <div className="text-slate-700">화</div>
+            <div className="text-slate-700">수</div>
+            <div className="text-slate-700">목</div>
+            <div className="text-slate-700">금</div>
+            <div className="text-blue-600">토</div>
+          </div>
+
+          {/* Month Grid Cells */}
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+            {calendarDays.map((cell, idx) => {
+              if (!cell) {
+                return (
+                  <div
+                    key={`empty-${idx}`}
+                    className="rounded-xl border border-transparent min-h-[70px] sm:min-h-[82px] bg-slate-100/40"
+                  />
+                );
+              }
+
+              const isSelected = cell.dateStr === targetDateStr;
+              const isToday = cell.dateStr === todayDateStr;
+              const { dayLeaves, dayReliefs } = getDayOverridesInfo(cell.dateStr);
+              const hasEvents = dayLeaves.length > 0 || dayReliefs.length > 0;
+
+              return (
+                <button
+                  key={cell.dateStr}
+                  type="button"
+                  onClick={() => {
+                    setTargetDateStr(cell.dateStr);
+                    setSelectedReliefSlot(null);
+                  }}
+                  className={`relative p-2 rounded-xl border text-left transition-all min-h-[70px] sm:min-h-[82px] flex flex-col justify-between cursor-pointer ${
+                    isSelected
+                      ? 'border-brand-600 bg-brand-50/80 shadow-md ring-2 ring-brand-500/80 z-10'
+                      : hasEvents
+                      ? 'border-amber-300/90 bg-white hover:border-brand-400 hover:shadow-xs'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  {/* Top row: day number & badges */}
+                  <div className="flex items-center justify-between w-full">
+                    <span
+                      className={`text-xs ${
+                        cell.dayOfWeek === 0
+                          ? 'text-rose-600 font-black'
+                          : cell.dayOfWeek === 6
+                          ? 'text-blue-600 font-black'
+                          : 'text-slate-800 font-bold'
+                      }`}
+                    >
+                      {cell.dayNum}
+                    </span>
+
+                    <div className="flex items-center space-x-1">
+                      {isToday && (
+                        <span className="px-1 py-0.2 rounded text-[9px] font-black bg-brand-600 text-white">
+                          오늘
+                        </span>
+                      )}
+                      {isSelected && (
+                        <span className="px-1 py-0.2 rounded text-[9px] font-black bg-brand-200 text-brand-900">
+                          선택
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Middle/Bottom: Leave and Relief summary */}
+                  <div className="space-y-0.5 mt-1">
+                    {dayLeaves.length > 0 && (
+                      <div
+                        className="text-[10px] font-extrabold text-rose-700 bg-rose-50/90 px-1.5 py-0.5 rounded border border-rose-200 truncate flex items-center space-x-1"
+                        title={`휴가자: ${dayLeaves.join(', ')}`}
+                      >
+                        <span className="font-black shrink-0 text-rose-600">휴:</span>
+                        <span className="truncate">{dayLeaves.join(', ')}</span>
+                      </div>
+                    )}
+                    {dayReliefs.length > 0 && (
+                      <div
+                        className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50/90 px-1.5 py-0.5 rounded border border-emerald-200 truncate flex items-center space-x-1"
+                        title={`대근자: ${dayReliefs.join(', ')}`}
+                      >
+                        <span className="font-black shrink-0 text-emerald-600">대:</span>
+                        <span className="truncate">{dayReliefs.join(', ')}</span>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Guide Caption */}
+          <div className="text-center text-xs text-slate-500 font-semibold pt-1 flex items-center justify-center space-x-1.5">
+            <span>💡</span>
+            <span>날짜 셀을 클릭하면 해당 일자의 휴가자 등록 및 대근자 선택 상세 화면으로 전환됩니다.</span>
+          </div>
+        </div>
+
+        {/* 1-2. Visual 9-Slot Selection Grid for Target Date */}
+        <div className="pt-2 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-slate-800">
+                선택 일자: <strong className="text-brand-700 font-mono text-sm">{targetDateStr} ({dayOfWeekStr})</strong>
+              </span>
+              <span className="text-xs text-slate-500">
+                — 휴가 신청자를 클릭하여 선택하세요 (당일 근무 요원 자동 강조):
+              </span>
+            </div>
             {requesterShift && (
               <span className="text-xs text-brand-700 font-bold bg-brand-50 px-2.5 py-1 rounded-lg border border-brand-200">
                 선택된 신청자: [{requesterShift.unit}호기] {getName(requesterSlot, requesterShift.memberName)} (원래 근무: [{requesterShift.shiftCode}])

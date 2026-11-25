@@ -1,12 +1,24 @@
 {
-  "version": "1.5.13",
+  "version": "1.5.14",
   "releaseDate": "2026-11-26",
-  "buildNumber": 25,
+  "buildNumber": 26,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.14",
+      "date": "2026-11-26",
+      "build": 26,
+      "title": "휴가·대근 관리 상단 월간 달력(Calendar) 배치 및 날짜별 휴가자/대근자 시각화·원클릭 등록 연동",
+      "notes": [
+        "휴가 대상일 및 신청자 선택 화면 상단에 월간 달력(Calendar) UI 배치 (이전달/다음달 탐색, 요일별 색상 구분, 오늘/선택일자 강조)",
+        "달력 날짜 셀마다 해당 일자의 휴가자('휴: 홍길동') 및 대근자('대: 김철수(D)') 배지 실시간 표시",
+        "달력 날짜 셀 클릭 시 대상 일자로 즉시 전환되며, 하단 9슬롯 신청자 선택 및 최적 대근자 추천·확정 화면으로 자동 연동",
+        "휴가 대근 관리 페이지에 다년도 연속 스케줄(fullSchedule) 연계로 월간 달력의 자유로운 연도/월 이동 지원"
+      ]
+    },
     {
       "version": "1.5.13",
       "date": "2026-11-26",

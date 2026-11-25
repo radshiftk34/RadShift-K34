@@ -170,7 +170,7 @@ export default function App() {
 
         {activeTab === 'leave' && (
           <LeaveReliefModal
-            schedule={activeSchedule}
+            schedule={fullSchedule}
             anonymize={anonymize}
             currentRole={currentRole}
             onApplyRelief={handleApplyRelief}
