@@ -9,7 +9,7 @@ import { AnnualScheduleView } from './components/AnnualScheduleView';
 import { LeaveReliefModal } from './components/LeaveReliefModal';
 import { ScenarioSimulator } from './components/ScenarioSimulator';
 import { TelegramBotSimulator } from './components/TelegramBotSimulator';
-import { MemberManagement } from './components/MemberManagement';
+import { SlotMemberAdmin } from './components/SlotMemberAdmin';
 import { OneStepTestModule } from './components/OneStepTestModule';
 import { AuthModal } from './components/AuthModal';
 import { VersionModal } from './components/VersionModal';
@@ -71,7 +71,12 @@ export default function App() {
       {/* Top Header */}
       <Header
         currentRole={currentRole}
-        onRoleChange={setCurrentRole}
+        onRoleChange={(role) => {
+          setCurrentRole(role);
+          if (role !== 'L3_ADMIN' && activeTab === 'members') {
+            setActiveTab('matrix');
+          }
+        }}
         year={year}
         onYearChange={setYear}
         anonymize={anonymize}
@@ -139,10 +144,14 @@ export default function App() {
         )}
 
         {activeTab === 'members' && (
-          <MemberManagement
+          <SlotMemberAdmin
             currentRole={currentRole}
             anonymize={anonymize}
             onToggleAnonymize={() => setAnonymize((v) => !v)}
+            year={year}
+            onCommitSchedule={(newOverrides) =>
+              setOverrides((prev) => ({ ...prev, ...newOverrides }))
+            }
           />
         )}
 
@@ -160,7 +169,7 @@ export default function App() {
               onClick={() => setIsVersionModalOpen(true)}
               className="ml-2 text-brand-600 hover:text-brand-800 underline font-semibold"
             >
-              버전 v1.1.0 (업데이트 내역)
+              버전 v1.3.0 (업데이트 내역)
             </button>
           </div>
           <div className="flex items-center space-x-4">

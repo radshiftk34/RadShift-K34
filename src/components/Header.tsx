@@ -59,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
                   title="버전 정보 및 업데이트 내역 보기"
                 >
-                  v1.3.0
+                  v1.4.0
                 </button>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
                   {year === 2026 ? '2026 정상 9인' : '2027 8+1 지원'}
@@ -164,13 +164,22 @@ export const Header: React.FC<HeaderProps> = ({
             { id: 'leave', label: '휴가·대근 관리', icon: Users, badge: 'Top 3' },
             { id: 'scenario', label: '시뮬레이터 (원형 큐)', icon: RotateCw },
             { id: 'telegram', label: '텔레그램 봇 연동', icon: Bot },
-            { id: 'members', label: '인원 및 권한 (RBAC)', icon: Shield },
+            ...(currentRole === 'L3_ADMIN'
+              ? [
+                  {
+                    id: 'members',
+                    label: '슬롯·인원 및 근무 관리',
+                    icon: Shield,
+                    badge: '관리자',
+                    highlight: true,
+                  },
+                ]
+              : []),
             {
               id: 'onestep-test',
               label: '원스텝 종합 진단',
               icon: Cpu,
               badge: '10종 전수',
-              highlight: true,
             },
           ].map((tab) => {
             const Icon = tab.icon;

@@ -83,13 +83,12 @@ export const VersionModal: React.FC<VersionModalProps> = ({ isOpen, onClose }) =
                 <div className="flex items-center space-x-2">
                   <span className="font-extrabold text-slate-900 text-sm">v{update.version}</span>
                   <span
-                    className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                      update.type === 'major'
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${update.type === 'major'
                         ? 'bg-purple-100 text-purple-800'
                         : update.type === 'minor'
-                        ? 'bg-brand-100 text-brand-800'
-                        : 'bg-emerald-100 text-emerald-800'
-                    }`}
+                          ? 'bg-brand-100 text-brand-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}
                   >
                     {update.type}
                   </span>
