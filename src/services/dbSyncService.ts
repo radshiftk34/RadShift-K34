@@ -171,7 +171,7 @@ export async function saveRemoteSlots(slots: SlotMemberData[]): Promise<boolean>
   try {
     const { error } = await supabase
       .from('rotation_slots')
-      .upsert(rows, { onConflict: 'slot_no,member_name' });
+      .upsert(rows, { onConflict: 'slot_no,member_name,work_start_date' });
     return !error;
   } catch {
     return false;

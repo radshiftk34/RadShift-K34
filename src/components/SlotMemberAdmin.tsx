@@ -26,6 +26,7 @@ import {
   Lock,
   Database,
   UserPlus,
+  AlertTriangle,
 } from 'lucide-react';
 
 export interface SlotMemberData {
@@ -260,36 +261,51 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
   // Active member for each slot at the selected targetDate
   const activeSlotMembers = useMemo(() => {
     const targetTime = new Date(targetDate).getTime();
-    const map: Record<number, SlotMemberData> = {};
+    const map: Record<
+      number,
+      {
+        member: SlotMemberData;
+        allActive: SlotMemberData[];
+        hasConflict: boolean;
+      }
+    > = {};
 
     for (let slot = 1; slot <= 9; slot++) {
-      // Find member whose range covers targetDate
-      const activeMem = members.find((m) => {
+      // Find all members whose range covers targetDate
+      const activeMems = members.filter((m) => {
         if (m.slotNo !== slot) return false;
         const start = new Date(m.workStartDate).getTime();
         const end = new Date(m.workEndDate || '9999-12-31').getTime();
         return targetTime >= start && targetTime <= end;
       });
 
-      if (activeMem) {
-        map[slot] = activeMem;
+      if (activeMems.length > 0) {
+        map[slot] = {
+          member: activeMems[0],
+          allActive: activeMems,
+          hasConflict: activeMems.length > 1,
+        };
       } else {
         // Fallback to first member of this slot or vacant placeholder
         const anyMem = members.find((m) => m.slotNo === slot);
-        map[slot] = anyMem || {
-          id: `vacant_${slot}`,
-          slotNo: slot,
-          unit: slot <= 4 ? '3호기' : '4호기',
-          name: '(결원)',
-          phone: '-',
-          telegramId: '-',
-          email: '-',
-          workStartDate: targetDate,
-          workEndDate: '9999-12-31',
-          terminationReason: '해당 기간 인원 미배정',
-          status: '결원',
-          role: 'L1_VIEWER',
-          accountStatus: 'pending',
+        map[slot] = {
+          member: anyMem || {
+            id: `vacant_${slot}`,
+            slotNo: slot,
+            unit: slot <= 4 ? '3호기' : '4호기',
+            name: '(결원)',
+            phone: '-',
+            telegramId: '-',
+            email: '-',
+            workStartDate: targetDate,
+            workEndDate: '9999-12-31',
+            terminationReason: '해당 기간 인원 미배정',
+            status: '결원',
+            role: 'L1_VIEWER',
+            accountStatus: 'pending',
+          },
+          allActive: [],
+          hasConflict: false,
         };
       }
     }
@@ -302,40 +318,27 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   /**
-   * 슬롯 기간 중복 검증 함수
-   * 동일한 슬롯 번호에 기존 근무자의 [시작일, 종료일]과 겹치는지 검사
+   * 슬롯 기간 중복 인원 조회 함수
+   * 동일 슬롯 내에서 근무 기간(시작일~종료일)이 겹치는 다른 근무자 목록 반환
    */
-  const checkPeriodOverlap = (
+  const getConflictingMembers = (
     candidateId: string,
     slotNo: number,
     startStr: string,
     endStr: string
-  ): { isValid: boolean; conflictMember?: SlotMemberData; reason?: string } => {
+  ): SlotMemberData[] => {
     const cStart = new Date(startStr).getTime();
-    const cEnd = new Date(endStr).getTime();
+    const cEnd = new Date(endStr || '9999-12-31').getTime();
 
-    if (cEnd < cStart) {
-      return { isValid: false, reason: '근무 종료일이 근무 시작일보다 앞설 수 없습니다.' };
-    }
+    return members.filter((m) => {
+      if (m.id === candidateId) return false;
+      if (m.slotNo !== slotNo) return false;
+      const mStart = new Date(m.workStartDate).getTime();
+      const mEnd = new Date(m.workEndDate || '9999-12-31').getTime();
 
-    for (const m of members) {
-      if (m.id === candidateId) continue; // 자기 자신 제외
-      if (m.slotNo === slotNo) {
-        const mStart = new Date(m.workStartDate).getTime();
-        const mEnd = new Date(m.workEndDate || '9999-12-31').getTime();
-
-        // 기간 중복 조건: (새시작 <= 기존종료) && (새종료 >= 기존시작)
-        if (cStart <= mEnd && cEnd >= mStart) {
-          return {
-            isValid: false,
-            conflictMember: m,
-            reason: `기존 근무자 [${m.name}]의 근무 기간(${m.workStartDate} ~ ${m.workEndDate})과 중복됩니다.`,
-          };
-        }
-      }
-    }
-
-    return { isValid: true };
+      // 기간 겹침 조건: max(cStart, mStart) <= min(cEnd, mEnd)
+      return Math.max(cStart, mStart) <= Math.min(cEnd, mEnd);
+    });
   };
 
   const handleOpenAddMember = (slotNo: number) => {
@@ -371,21 +374,15 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       return;
     }
 
-    // 중복 기간 검증
-    const check = checkPeriodOverlap(
-      editingMember.id,
-      editingMember.slotNo,
-      editingMember.workStartDate,
-      editingMember.workEndDate || '9999-12-31'
-    );
+    const cStart = new Date(editingMember.workStartDate).getTime();
+    const cEnd = new Date(editingMember.workEndDate || '9999-12-31').getTime();
 
-    if (!check.isValid) {
-      setValidationError(
-        `[Slot ${editingMember.slotNo} 등록 불가] ${check.reason} 같은 슬롯에는 근무 기간이 겹치지 않는 경우에만 추가 등록이 가능합니다.`
-      );
+    if (cEnd < cStart) {
+      setValidationError('근무 종료일이 근무 시작일보다 앞설 수 없습니다.');
       return;
     }
 
+    // 동일 슬롯에 동일 기간 2명 이상 등록 허용 (차단하지 않고 저장)
     if (isAddingNew) {
       setMembers((prev) => [...prev, editingMember]);
     } else {
@@ -396,6 +393,17 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
     setEditingMember(null);
     setValidationError(null);
+  };
+
+  const handleDeleteMember = (memberId: string) => {
+    const target = members.find((m) => m.id === memberId);
+    if (!target) return;
+    const confirmed = window.confirm(
+      `[${target.unit} Slot ${target.slotNo}] '${target.name}' 님의 근무 이력을 삭제하시겠습니까?`
+    );
+    if (!confirmed) return;
+
+    setMembers((prev) => prev.filter((m) => m.id !== memberId));
   };
 
   // ---------------------------------------------------------------------------
@@ -514,10 +522,10 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
           endDate: `${year}-12-31`,
           supportPersonnel: eightPlusOneConfig.enabled
             ? {
-                name: eightPlusOneConfig.supportName,
-                startDate: eightPlusOneConfig.startDate,
-                endDate: eightPlusOneConfig.endDate,
-              }
+              name: eightPlusOneConfig.supportName,
+              startDate: eightPlusOneConfig.startDate,
+              endDate: eightPlusOneConfig.endDate,
+            }
             : undefined,
           enforce84dShift: true,
           autoHolidays: true,
@@ -615,11 +623,10 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
             <button
               onClick={onToggleAnonymize}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center space-x-1.5 transition-colors ${
-                anonymize
+              className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center space-x-1.5 transition-colors ${anonymize
                   ? 'bg-purple-800 border-purple-500 text-purple-100'
                   : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
-              }`}
+                }`}
             >
               <span>{anonymize ? '익명(HP-01)' : '실명 표시'}</span>
             </button>
@@ -640,11 +647,10 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveSubTab(tab.id as any)}
-                className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl transition-all ${
-                  isActive
+                className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl transition-all ${isActive
                     ? 'bg-purple-600 text-white shadow-md'
                     : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span>{tab.label}</span>
@@ -720,14 +726,20 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-9 gap-3">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((slotNo) => {
                 const is3U = slotNo <= 4;
-                const activeMem = activeSlotMembers[slotNo];
-                const displayName = getDisplayName(slotNo, activeMem.name);
+                const slotData = activeSlotMembers[slotNo];
+                const activeMem = slotData.member;
+                const hasConflict = slotData.hasConflict;
+                const displayName = hasConflict
+                  ? slotData.allActive.map((m) => getDisplayName(slotNo, m.name)).join(' / ')
+                  : getDisplayName(slotNo, activeMem.name);
 
                 return (
                   <div
                     key={slotNo}
                     className={`rounded-2xl p-3 border transition-all hover:shadow-md ${
-                      is3U
+                      hasConflict
+                        ? 'bg-rose-50/70 border-rose-300 ring-2 ring-rose-200'
+                        : is3U
                         ? 'bg-blue-50/50 border-blue-200'
                         : 'bg-emerald-50/50 border-emerald-200'
                     }`}
@@ -740,26 +752,42 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                       >
                         S{slotNo}
                       </span>
-                      <span
-                        className={`text-[10px] font-bold ${
-                          is3U ? 'text-blue-700' : 'text-emerald-700'
-                        }`}
-                      >
-                        {is3U ? '3호기' : '4호기'}
-                      </span>
+                      <div className="flex items-center space-x-1">
+                        {hasConflict && (
+                          <span className="text-[9px] font-black px-1 py-0.5 rounded bg-rose-600 text-white animate-pulse">
+                            중복({slotData.allActive.length})
+                          </span>
+                        )}
+                        <span
+                          className={`text-[10px] font-bold ${
+                            is3U ? 'text-blue-700' : 'text-emerald-700'
+                          }`}
+                        >
+                          {is3U ? '3호기' : '4호기'}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="font-extrabold text-slate-900 text-sm tracking-tight truncate">
+                    <div
+                      className={`font-extrabold text-sm tracking-tight truncate ${
+                        hasConflict ? 'text-rose-900 font-black' : 'text-slate-900'
+                      }`}
+                      title={displayName}
+                    >
                       {displayName}
                     </div>
 
                     <div className="text-[10px] text-slate-500 mt-1 truncate">
-                      {activeMem.phone}
+                      {hasConflict ? '⚠️ 동일 기간 중복 배정' : activeMem.phone}
                     </div>
 
                     <div className="mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
-                      <span className="text-slate-400 font-medium truncate max-w-[65px]">
-                        {activeMem.status}
+                      <span
+                        className={`font-medium truncate max-w-[65px] ${
+                          hasConflict ? 'text-rose-700 font-bold' : 'text-slate-400'
+                        }`}
+                      >
+                        {hasConflict ? '수정필요' : activeMem.status}
                       </span>
                       <button
                         onClick={() => handleOpenEditMember(activeMem)}
@@ -774,7 +802,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
             </div>
           </div>
 
-          {/* 2. Full Members Management Table (Non-overlapping Same-Slot History Support) */}
+          {/* 2. Full Members Management Table (Allow Same-Slot Overlap with Notice) */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -782,7 +810,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                   슬롯별 HP 인원 및 근무 이력 관리
                 </h3>
                 <p className="text-xs text-slate-500">
-                  * <strong>기간 비중복 규칙:</strong> 같은 슬롯 번호라도 근무 시작일과 종료일이 겹치지 않으면 후임자/교체 인원을 자유롭게 추가할 수 있습니다.
+                  * <strong>다중 인원 등록 가능:</strong> 같은 슬롯에 동일한 기간이라도 2명 이상 등록이 가능하며, 기간이 중복되는 경우 비고란에 수정 권고 메시지가 표시됩니다.
                 </p>
               </div>
 
@@ -798,6 +826,23 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
               </div>
             </div>
 
+            {/* Overlap Summary Alert Banner */}
+            {members.some(
+              (m) =>
+                getConflictingMembers(m.id, m.slotNo, m.workStartDate, m.workEndDate)
+                  .length > 0
+            ) && (
+              <div className="mx-5 my-4 p-3.5 bg-rose-50 border border-rose-300 rounded-xl flex items-center justify-between text-xs text-rose-950">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>
+                    <strong>[근무 기간 중복 안내]</strong> 현재 동일 슬롯에 근무 기간이 겹치는 인원이 존재합니다.
+                    아래 이력 목록의 <strong>비고</strong> 안내를 확인하고 기간을 수정해 주세요.
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-xs">
@@ -811,9 +856,11 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     <th className="px-3 py-2.5 text-left">이메일 계정</th>
                     <th className="px-3 py-2.5 text-center">근무 시작일</th>
                     <th className="px-3 py-2.5 text-center">근무 종료일</th>
-                    <th className="px-3 py-2.5 text-left">근무 종료 사유</th>
+                    <th className="px-3 py-2.5 text-left min-w-[280px]">
+                      비고 (근무 사유 및 기간 중복 안내)
+                    </th>
                     <th className="px-3 py-2.5 text-center">상태</th>
-                    <th className="px-3 py-2.5 text-center w-20">관리</th>
+                    <th className="px-3 py-2.5 text-center w-24">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
@@ -823,9 +870,24 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     .map((m) => {
                       const is3U = m.slotNo <= 4;
                       const displayName = getDisplayName(m.slotNo, m.name);
+                      const conflicts = getConflictingMembers(
+                        m.id,
+                        m.slotNo,
+                        m.workStartDate,
+                        m.workEndDate
+                      );
+                      const hasConflict = conflicts.length > 0;
+                      const conflictNames = conflicts.map((c) => `'${c.name}'`).join(', ');
 
                       return (
-                        <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                        <tr
+                          key={m.id}
+                          className={`transition-colors ${
+                            hasConflict
+                              ? 'bg-rose-50/40 hover:bg-rose-50/70'
+                              : 'hover:bg-slate-50'
+                          }`}
+                        >
                           <td className="px-3 py-2.5 text-center font-black font-mono">
                             <span
                               className={`px-2 py-0.5 rounded text-[11px] ${
@@ -841,7 +903,14 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                             {m.unit}
                           </td>
                           <td className="px-3 py-2.5 font-bold text-slate-900">
-                            {displayName}
+                            <div className="flex items-center space-x-1.5">
+                              <span>{displayName}</span>
+                              {hasConflict && (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-rose-600 text-white font-extrabold rounded">
+                                  중복
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2.5 font-mono text-slate-600">
                             <div className="flex items-center space-x-1">
@@ -867,8 +936,34 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                           <td className="px-3 py-2.5 text-center font-mono font-bold text-slate-800">
                             {m.workEndDate === '9999-12-31' ? '계속(9999-12-31)' : m.workEndDate}
                           </td>
-                          <td className="px-3 py-2.5 text-slate-700">
-                            {m.terminationReason}
+                          <td className="px-3 py-2.5">
+                            {hasConflict ? (
+                              <div className="space-y-1">
+                                <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-semibold leading-relaxed">
+                                  <div className="flex items-center space-x-1.5 text-rose-700 font-black">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                    <span>[기간 중복 경고]</span>
+                                  </div>
+                                  <p className="mt-0.5 text-xs text-slate-900">
+                                    <span className="font-bold text-slate-950">'{m.name}'</span> 님과{' '}
+                                    <span className="font-extrabold text-rose-700">{conflictNames}</span> 님의 근무 기간이 중복되니 수정해야 합니다.
+                                  </p>
+                                  <div className="text-[11px] text-slate-500 font-normal mt-0.5">
+                                    * 본인 기간: {m.workStartDate} ~ {m.workEndDate === '9999-12-31' ? '계속' : m.workEndDate}
+                                  </div>
+                                </div>
+                                {m.terminationReason &&
+                                  m.terminationReason !== '재직중 (정상 근무)' && (
+                                    <div className="text-[11px] text-slate-500 pl-1">
+                                      기존 사유: {m.terminationReason}
+                                    </div>
+                                  )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-700 text-xs font-medium">
+                                {m.terminationReason || '정상 근무'}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <span
@@ -884,12 +979,21 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                             </span>
                           </td>
                           <td className="px-3 py-2.5 text-center">
-                            <button
-                              onClick={() => handleOpenEditMember(m)}
-                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
-                            >
-                              수정
-                            </button>
+                            <div className="flex items-center justify-center space-x-1">
+                              <button
+                                onClick={() => handleOpenEditMember(m)}
+                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                              >
+                                수정
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMember(m.id)}
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                title="이력 삭제"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -968,11 +1072,10 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     <span>결원 백업 투입 인원 선정</span>
                   </span>
                   <span
-                    className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                      autoBackupInfo.isManual
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full ${autoBackupInfo.isManual
                         ? 'bg-purple-100 text-purple-800 border border-purple-300'
                         : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    }`}
+                      }`}
                   >
                     {autoBackupInfo.isManual ? '관리자 수동 지정' : '알고리즘 자동 선정'}
                   </span>
@@ -1175,11 +1278,10 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     </td>
                     <td className="px-4 py-2 text-center">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                          h.isSubstitute
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${h.isSubstitute
                             ? 'bg-amber-100 text-amber-800 border border-amber-300'
                             : 'bg-red-50 text-red-700 border border-red-200'
-                        }`}
+                          }`}
                       >
                         {h.isSubstitute ? '대체공휴일' : '법정공휴일'}
                       </span>

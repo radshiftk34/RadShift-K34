@@ -1,12 +1,24 @@
 {
-  "version": "1.4.2",
+  "version": "1.4.3",
   "releaseDate": "2026-11-25",
-  "buildNumber": 7,
+  "buildNumber": 8,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.4.3",
+      "date": "2026-11-25",
+      "build": 8,
+      "title": "동일 슬롯 기간 중복 허용 및 근무 이력 비고란 중복 경고 안내",
+      "notes": [
+        "동일 슬롯에 동일 기간 2명 이상 등록 가능하도록 저장 차단 해제",
+        "근무 이력 관리 목록 비고란에 대상자 간 기간 중복 경고 및 수정 권고 메시지 표시",
+        "원형 큐 슬롯 카드 및 이력 테이블에 중복 표시 배지 및 이력 삭제 기능 추가",
+        "Supabase 복합키(slot_no, member_name, work_start_date) 보강으로 다중 인원 DB 영구 저장 지원"
+      ]
+    },
     {
       "version": "1.4.2",
       "date": "2026-11-25",

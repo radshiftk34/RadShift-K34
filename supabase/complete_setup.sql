@@ -54,7 +54,7 @@ create table public.rotation_slots (
   status text not null default '재직중',
   note text,
   updated_at timestamptz not null default now(),
-  primary key (slot_no, work_start_date)
+  primary key (slot_no, member_name, work_start_date)
 );
 
 -- 3) scenarios: 8+1 지원조 및 9인 운영 시나리오 설정
