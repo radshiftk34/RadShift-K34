@@ -1,6 +1,16 @@
 # Changelog
 
 
+## [1.2.0] - 2026-11-25
+### Full UI Implementation & One-Step Diagnostic Test Suite
+
+### ✨ Added (신규 기능)
+- complete full UI implementation and One-Step Diagnostic Test Module
+- add local dev server launcher and integrated git & version manager CLI/batch tools
+
+### 📝 Documentation (문서)
+- clarify wage peak personnel replacement notes in timeline
+
 ## [1.1.0] - 2026-11-25
 
 ### 주요 내용 (Highlights)

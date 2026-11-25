@@ -1,12 +1,24 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "releaseDate": "2026-11-25",
-  "buildNumber": 2,
+  "buildNumber": 3,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "2944ed6",
   "updates": [
+    {
+      "version": "1.2.0",
+      "date": "2026-11-25",
+      "build": 3,
+      "title": "Full UI Implementation & One-Step Diagnostic Test Suite",
+      "notes": [
+        "[신규] complete full UI implementation and One-Step Diagnostic Test Module",
+        "[신규] add local dev server launcher and integrated git & version manager CLI/batch tools",
+        "[문서] clarify wage peak personnel replacement notes in timeline"
+      ],
+      "breaking": false
+    },
     {
       "version": "1.1.0",
       "date": "2026-11-25",
@@ -54,5 +66,6 @@
         ]
       }
     }
-  ]
+  ],
+  "lastReleaseDate": "2026-11-25"
 }
