@@ -10,14 +10,17 @@ export interface ReliefCandidate {
   monthlyShifts: number;
   reliefCount: number;
   creditBalance: number;
+  consecutiveDays: number;
   isEligible: boolean;
   disqualificationReason?: string;
+  warningNotice?: string;
   scoreBreakdown: {
     phase11Bonus: number;
     unitBonus: number;
     shiftPenalty: number;
     reliefPenalty: number;
     creditPenalty: number;
+    consecutivePenalty?: number;
   };
 }
 
@@ -76,6 +79,7 @@ export function calculateReliefCandidates(
         monthlyShifts: monthlyShiftCounts[shift.slotNo] || 0,
         reliefCount: reliefHistory[shift.slotNo] || 0,
         creditBalance: creditBalances[shift.slotNo] || 0,
+        consecutiveDays: 0,
         isEligible: false,
         disqualificationReason: `당일 이미 [${currentCode}] 근무 중입니다.`,
         scoreBreakdown: { phase11Bonus: 0, unitBonus: 0, shiftPenalty: 0, reliefPenalty: 0, creditPenalty: 0 },
@@ -104,26 +108,25 @@ export function calculateReliefCandidates(
       }
     }
 
-    // Hard Filter 4: Candidate must not exceed 3 consecutive working days
+    // 4. Consecutive working days inspection (대근의 경우 연속 3일 초과 근무도 정식 허용)
     let consecutive = 1;
-    if (!qrReason) {
-      for (let i = dayIndex - 1; i >= 0; i--) {
-        const d = allDays[i];
-        const code = overrides[`${d.dateStr}_${shift.slotNo}`] ||
-          d.shifts.find((s) => s.slotNo === shift.slotNo)?.shiftCode || 'X';
-        if (isWorkShift(code)) consecutive++;
-        else break;
-      }
-      for (let i = dayIndex + 1; i < allDays.length; i++) {
-        const d = allDays[i];
-        const code = overrides[`${d.dateStr}_${shift.slotNo}`] ||
-          d.shifts.find((s) => s.slotNo === shift.slotNo)?.shiftCode || 'X';
-        if (isWorkShift(code)) consecutive++;
-        else break;
-      }
+    for (let i = dayIndex - 1; i >= 0; i--) {
+      const d = allDays[i];
+      const code = overrides[`${d.dateStr}_${shift.slotNo}`] ||
+        d.shifts.find((s) => s.slotNo === shift.slotNo)?.shiftCode || 'X';
+      if (isWorkShift(code)) consecutive++;
+      else break;
+    }
+    for (let i = dayIndex + 1; i < allDays.length; i++) {
+      const d = allDays[i];
+      const code = overrides[`${d.dateStr}_${shift.slotNo}`] ||
+        d.shifts.find((s) => s.slotNo === shift.slotNo)?.shiftCode || 'X';
+      if (isWorkShift(code)) consecutive++;
+      else break;
     }
 
-    if (qrReason || consecutive > 3) {
+    // Hard Filter: Only Quick Return disqualifies (연속 3일 초과는 대근 시 허용)
+    if (qrReason) {
       candidates.push({
         slotNo: shift.slotNo,
         memberName: shift.memberName,
@@ -133,8 +136,9 @@ export function calculateReliefCandidates(
         monthlyShifts: monthlyShiftCounts[shift.slotNo] || 0,
         reliefCount: reliefHistory[shift.slotNo] || 0,
         creditBalance: creditBalances[shift.slotNo] || 0,
+        consecutiveDays: consecutive,
         isEligible: false,
-        disqualificationReason: qrReason || `투입 시 ${consecutive}일 연속 근무로 최대 3일 초과`,
+        disqualificationReason: qrReason,
         scoreBreakdown: { phase11Bonus: 0, unitBonus: 0, shiftPenalty: 0, reliefPenalty: 0, creditPenalty: 0 },
       });
       continue;
@@ -152,8 +156,10 @@ export function calculateReliefCandidates(
     const shiftPenalty = 10 * monthlyShifts;
     const reliefPenalty = 20 * reliefCount;
     const creditPenalty = 5 * creditBalance;
+    const consecutivePenalty = consecutive > 3 ? (consecutive - 3) * 10 : 0;
 
-    const totalScore = phase11Bonus + unitBonus - shiftPenalty - reliefPenalty - creditPenalty;
+    const totalScore = phase11Bonus + unitBonus - shiftPenalty - reliefPenalty - creditPenalty - consecutivePenalty;
+    const warningNotice = consecutive > 3 ? `${consecutive}일 연속근무 (대근 규정상 허용됨)` : undefined;
 
     candidates.push({
       slotNo: shift.slotNo,
@@ -164,13 +170,16 @@ export function calculateReliefCandidates(
       monthlyShifts,
       reliefCount,
       creditBalance,
+      consecutiveDays: consecutive,
       isEligible: true,
+      warningNotice,
       scoreBreakdown: {
         phase11Bonus,
         unitBonus,
         shiftPenalty,
         reliefPenalty,
         creditPenalty,
+        consecutivePenalty,
       },
     });
   }

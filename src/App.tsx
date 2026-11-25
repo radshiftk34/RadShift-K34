@@ -167,6 +167,14 @@ export default function App() {
             anonymize={anonymize}
             currentRole={currentRole}
             onApplyRelief={handleApplyRelief}
+            overrides={overrides}
+            onCancelOverride={(overrideKey) => {
+              setOverrides((prev) => {
+                const next = { ...prev };
+                delete next[overrideKey];
+                return next;
+              });
+            }}
           />
         )}
 

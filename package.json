@@ -1,7 +1,7 @@
 {
   "name": "radshift-k34",
   "private": true,
-  "version": "1.5.10",
+  "version": "1.5.11",
   "type": "module",
   "scripts": {
     "dev": "vite",
