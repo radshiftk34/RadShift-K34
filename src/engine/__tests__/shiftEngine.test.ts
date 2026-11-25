@@ -255,6 +255,27 @@ describe('RadShift_K34 Deterministic Shift Engine Tests', () => {
       expect(reliefMsg.buttons).toBeDefined();
     });
 
+    it('should seamlessly connect 2026-12-31 to 2027-01-01 in combined fullSchedule', () => {
+      const schedule2026 = engine.generateSchedule('2026-01-01', '2026-12-31');
+      const schedule2027 = engine.generateSchedule('2027-01-01', '2027-12-31');
+      const fullSchedule = [...schedule2026, ...schedule2027];
+
+      const idx20261231 = fullSchedule.findIndex((d) => d.dateStr === '2026-12-31');
+      expect(idx20261231).toBe(364);
+      expect(idx20261231 + 1 < fullSchedule.length).toBe(true);
+
+      const tomorrowOfLastDay2026 = fullSchedule[idx20261231 + 1];
+      expect(tomorrowOfLastDay2026).toBeDefined();
+      expect(tomorrowOfLastDay2026.dateStr).toBe('2027-01-01');
+
+      // Next 14 days from 2026-12-31
+      const next14 = fullSchedule.slice(idx20261231, idx20261231 + 14);
+      expect(next14.length).toBe(14);
+      expect(next14[0].dateStr).toBe('2026-12-31');
+      expect(next14[1].dateStr).toBe('2027-01-01');
+      expect(next14[13].dateStr).toBe('2027-01-13');
+    });
+
     it('should pass all 10 suites in One-Step Diagnostic Test Runner', async () => {
       const { runAllDiagnostics } = await import('../testRunner');
       const rep = await runAllDiagnostics(engine);

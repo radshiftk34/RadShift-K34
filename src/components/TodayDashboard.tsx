@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { DaySchedule, ShiftCell } from '../engine/types';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { DaySchedule, ShiftCell, ShiftCode } from '../engine/types';
 import { exportPersonalICalendar } from '../utils/icsExport';
 import {
   Calendar,
@@ -21,6 +21,8 @@ interface TodayDashboardProps {
   anonymize: boolean;
   year: number;
   onOpenBanganTab?: () => void;
+  onYearChange?: (year: number) => void;
+  overrides?: Record<string, ShiftCode>;
 }
 
 export const TodayDashboard: React.FC<TodayDashboardProps> = ({
@@ -28,6 +30,8 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
   anonymize,
   year,
   onOpenBanganTab,
+  onYearChange,
+  overrides,
 }) => {
   // Current real-world date string (YYYY-MM-DD)
   const todayDateStr = useMemo(() => {
@@ -38,21 +42,42 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
     return `${y}-${m}-${d}`;
   }, []);
 
-  // Default to today if it exists in current schedule, otherwise schedule start
+  const minDateStr = useMemo(() => schedule[0]?.dateStr || '2026-01-01', [schedule]);
+  const maxDateStr = useMemo(
+    () => schedule[schedule.length - 1]?.dateStr || '2028-12-31',
+    [schedule]
+  );
+
+  // Default to today if it exists in current schedule, otherwise start of current year
   const defaultDateStr = useMemo(() => {
     if (schedule.some((d) => d.dateStr === todayDateStr)) {
       return todayDateStr;
     }
-    return schedule[0]?.dateStr || `${year}-01-01`;
+    const yearMatch = schedule.find((d) => d.dateStr.startsWith(`${year}-`));
+    return yearMatch?.dateStr || schedule[0]?.dateStr || `${year}-01-01`;
   }, [schedule, todayDateStr, year]);
 
   const [selectedDateStr, setSelectedDateStr] = useState<string>(defaultDateStr);
   const [selectedSlot, setSelectedSlot] = useState<number>(1);
 
-  // Sync when schedule or year changes
+  // Sync when year changes from external controls (e.g. year toggle in header)
+  const prevYearRef = useRef(year);
   useEffect(() => {
-    setSelectedDateStr(defaultDateStr);
-  }, [defaultDateStr]);
+    if (prevYearRef.current !== year) {
+      prevYearRef.current = year;
+      const curYear = parseInt(selectedDateStr.slice(0, 4), 10);
+      if (curYear !== year) {
+        if (year === new Date().getFullYear() && schedule.some((d) => d.dateStr === todayDateStr)) {
+          setSelectedDateStr(todayDateStr);
+        } else {
+          const firstDayOfYear = schedule.find((d) => d.dateStr.startsWith(`${year}-`));
+          if (firstDayOfYear) {
+            setSelectedDateStr(firstDayOfYear.dateStr);
+          }
+        }
+      }
+    }
+  }, [year, schedule, selectedDateStr, todayDateStr]);
 
   // Bang-an-bu support data
   const banganWorkers = useMemo(() => loadBanganWorkers(), []);
@@ -80,14 +105,32 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
   const handleDateShift = (delta: number) => {
     const nextIdx = dayIndex + delta;
     if (nextIdx >= 0 && nextIdx < schedule.length) {
-      setSelectedDateStr(schedule[nextIdx].dateStr);
+      const nextDateStr = schedule[nextIdx].dateStr;
+      setSelectedDateStr(nextDateStr);
+      const nextYear = parseInt(nextDateStr.slice(0, 4), 10);
+      if (!isNaN(nextYear) && nextYear !== year && onYearChange) {
+        onYearChange(nextYear);
+      }
     }
   };
 
   const handleGoToToday = () => {
     if (schedule.some((d) => d.dateStr === todayDateStr)) {
       setSelectedDateStr(todayDateStr);
+      const todayYear = parseInt(todayDateStr.slice(0, 4), 10);
+      if (!isNaN(todayYear) && todayYear !== year && onYearChange) {
+        onYearChange(todayYear);
+      }
     }
+  };
+
+  const getCellShiftCode = (cell: ShiftCell, targetDate?: string): ShiftCode => {
+    const dStr = targetDate || today?.dateStr;
+    const key = `${dStr}_${cell.slotNo}`;
+    if (overrides && overrides[key]) {
+      return overrides[key];
+    }
+    return cell.shiftCode;
   };
 
   const getName = (cell: ShiftCell, targetDate?: string) => {
@@ -146,9 +189,16 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
           <input
             type="date"
             value={selectedDateStr}
-            min={`${year}-01-01`}
-            max={`${year}-12-31`}
-            onChange={(e) => setSelectedDateStr(e.target.value)}
+            min={minDateStr}
+            max={maxDateStr}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedDateStr(val);
+              const valYear = parseInt(val.slice(0, 4), 10);
+              if (!isNaN(valYear) && valYear !== year && onYearChange) {
+                onYearChange(valYear);
+              }
+            }}
             className="text-xs font-semibold px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
           />
 
@@ -204,19 +254,22 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {['D', 'A', 'N'].map((targetCode) => {
-                  const match = today?.shifts.find(
-                    (s) =>
-                      (s.unit === '3U' && s.shiftCode === targetCode) ||
-                      (targetCode === 'D' && (s.shiftCode === '3D' || s.shiftCode === '3D*'))
-                  ) || (targetCode === 'D' && (today?.supportShift?.shiftCode === '3D' || today?.supportShift?.shiftCode === '3D*') ? today?.supportShift : null);
+                  const match = today?.shifts.find((s) => {
+                    const code = getCellShiftCode(s, today.dateStr);
+                    return (
+                      (s.unit === '3U' && code === targetCode) ||
+                      (targetCode === 'D' && (code === '3D' || code === '3D*'))
+                    );
+                  }) || (targetCode === 'D' && (today?.supportShift?.shiftCode === '3D' || today?.supportShift?.shiftCode === '3D*') ? today?.supportShift : null);
+                  const activeShiftCode = match ? (match.slotNo === 10 ? match.shiftCode : getCellShiftCode(match, today.dateStr)) : '';
 
                   return (
                     <div key={targetCode} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col">
                       <span className="text-[10px] font-bold text-slate-500 uppercase">{targetCode === 'D' ? '주간 (08~16)' : targetCode === 'A' ? '오후 (16~24)' : '야간 (24~08)'}</span>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="font-bold text-sm text-slate-900">{match ? getName(match) : '-'}</span>
-                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${getShiftBadgeColor(match?.shiftCode || '')}`}>
-                          {match?.shiftCode}
+                        <span className="font-bold text-sm text-slate-900">{match ? getName(match, today?.dateStr) : '-'}</span>
+                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${getShiftBadgeColor(activeShiftCode)}`}>
+                          {activeShiftCode}
                         </span>
                       </div>
                       {match?.badge && <span className="text-[10px] text-brand-600 mt-1 truncate">{match.badge}</span>}
@@ -237,19 +290,22 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {['D', 'A', 'N'].map((targetCode) => {
-                  const match = today?.shifts.find(
-                    (s) =>
-                      (s.unit === '4U' && s.shiftCode === targetCode) ||
-                      (targetCode === 'D' && (s.shiftCode === '4D' || s.shiftCode === '4D*'))
-                  ) || (targetCode === 'D' && (today?.supportShift?.shiftCode === '4D' || today?.supportShift?.shiftCode === '4D*') ? today?.supportShift : null);
+                  const match = today?.shifts.find((s) => {
+                    const code = getCellShiftCode(s, today.dateStr);
+                    return (
+                      (s.unit === '4U' && code === targetCode) ||
+                      (targetCode === 'D' && (code === '4D' || code === '4D*'))
+                    );
+                  }) || (targetCode === 'D' && (today?.supportShift?.shiftCode === '4D' || today?.supportShift?.shiftCode === '4D*') ? today?.supportShift : null);
+                  const activeShiftCode = match ? (match.slotNo === 10 ? match.shiftCode : getCellShiftCode(match, today.dateStr)) : '';
 
                   return (
                     <div key={targetCode} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col">
                       <span className="text-[10px] font-bold text-slate-500 uppercase">{targetCode === 'D' ? '주간 (08~16)' : targetCode === 'A' ? '오후 (16~24)' : '야간 (24~08)'}</span>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="font-bold text-sm text-slate-900">{match ? getName(match) : '-'}</span>
-                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${getShiftBadgeColor(match?.shiftCode || '')}`}>
-                          {match?.shiftCode}
+                        <span className="font-bold text-sm text-slate-900">{match ? getName(match, today?.dateStr) : '-'}</span>
+                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${getShiftBadgeColor(activeShiftCode)}`}>
+                          {activeShiftCode}
                         </span>
                       </div>
                       {match?.badge && <span className="text-[10px] text-emerald-600 mt-1 truncate">{match.badge}</span>}
@@ -264,8 +320,8 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
               <div>
                 <span className="font-semibold text-slate-700">휴무 (OFF 3인): </span>
                 {today?.shifts
-                  .filter((s) => s.shiftCode === 'X')
-                  .map((s) => getName(s))
+                  .filter((s) => getCellShiftCode(s, today.dateStr) === 'X')
+                  .map((s) => getName(s, today.dateStr))
                   .join(', ')}
               </div>
               {today?.supportShift && today.supportShift.shiftCode !== 'X' && (
@@ -339,21 +395,36 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
               <>
                 {/* 3 Unit Tomorrow */}
                 <div>
-                  <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2 block">
-                    고리 3호기
-                  </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      <span>고리 3호기</span>
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">D / A / N 각 1인</span>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     {['D', 'A', 'N'].map((targetCode) => {
-                      const match = tomorrow.shifts.find(
-                        (s) =>
-                          (s.unit === '3U' && s.shiftCode === targetCode) ||
-                          (targetCode === 'D' && (s.shiftCode === '3D' || s.shiftCode === '3D*'))
-                      ) || (targetCode === 'D' && (tomorrow.supportShift?.shiftCode === '3D' || tomorrow.supportShift?.shiftCode === '3D*') ? tomorrow.supportShift : null);
+                      const match = tomorrow.shifts.find((s) => {
+                        const code = getCellShiftCode(s, tomorrow.dateStr);
+                        return (
+                          (s.unit === '3U' && code === targetCode) ||
+                          (targetCode === 'D' && (code === '3D' || code === '3D*'))
+                        );
+                      }) || (targetCode === 'D' && (tomorrow.supportShift?.shiftCode === '3D' || tomorrow.supportShift?.shiftCode === '3D*') ? tomorrow.supportShift : null);
+                      const activeShiftCode = match ? (match.slotNo === 10 ? match.shiftCode : getCellShiftCode(match, tomorrow.dateStr)) : '';
 
                       return (
                         <div key={targetCode} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-400">{targetCode} 근무</span>
-                          <span className="font-bold text-sm text-slate-900 mt-1">{match ? getName(match) : '-'}</span>
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">{targetCode === 'D' ? '주간 (08~16)' : targetCode === 'A' ? '오후 (16~24)' : '야간 (24~08)'}</span>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="font-bold text-sm text-slate-900">{match ? getName(match, tomorrow.dateStr) : '-'}</span>
+                            {match && (
+                              <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${getShiftBadgeColor(activeShiftCode)}`}>
+                                {activeShiftCode}
+                              </span>
+                            )}
+                          </div>
+                          {match?.badge && <span className="text-[10px] text-brand-600 mt-1 truncate">{match.badge}</span>}
                         </div>
                       );
                     })}
@@ -362,21 +433,36 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
 
                 {/* 4 Unit Tomorrow */}
                 <div>
-                  <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2 block">
-                    고리 4호기
-                  </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span>고리 4호기</span>
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">D / A / N 각 1인</span>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     {['D', 'A', 'N'].map((targetCode) => {
-                      const match = tomorrow.shifts.find(
-                        (s) =>
-                          (s.unit === '4U' && s.shiftCode === targetCode) ||
-                          (targetCode === 'D' && (s.shiftCode === '4D' || s.shiftCode === '4D*'))
-                      ) || (targetCode === 'D' && (tomorrow.supportShift?.shiftCode === '4D' || tomorrow.supportShift?.shiftCode === '4D*') ? tomorrow.supportShift : null);
+                      const match = tomorrow.shifts.find((s) => {
+                        const code = getCellShiftCode(s, tomorrow.dateStr);
+                        return (
+                          (s.unit === '4U' && code === targetCode) ||
+                          (targetCode === 'D' && (code === '4D' || code === '4D*'))
+                        );
+                      }) || (targetCode === 'D' && (tomorrow.supportShift?.shiftCode === '4D' || tomorrow.supportShift?.shiftCode === '4D*') ? tomorrow.supportShift : null);
+                      const activeShiftCode = match ? (match.slotNo === 10 ? match.shiftCode : getCellShiftCode(match, tomorrow.dateStr)) : '';
 
                       return (
                         <div key={targetCode} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-400">{targetCode} 근무</span>
-                          <span className="font-bold text-sm text-slate-900 mt-1">{match ? getName(match) : '-'}</span>
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">{targetCode === 'D' ? '주간 (08~16)' : targetCode === 'A' ? '오후 (16~24)' : '야간 (24~08)'}</span>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="font-bold text-sm text-slate-900">{match ? getName(match, tomorrow.dateStr) : '-'}</span>
+                            {match && (
+                              <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${getShiftBadgeColor(activeShiftCode)}`}>
+                                {activeShiftCode}
+                              </span>
+                            )}
+                          </div>
+                          {match?.badge && <span className="text-[10px] text-emerald-600 mt-1 truncate">{match.badge}</span>}
                         </div>
                       );
                     })}
@@ -387,10 +473,15 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
                   <div>
                     <span className="font-semibold text-slate-700">휴무: </span>
                     {tomorrow.shifts
-                      .filter((s) => s.shiftCode === 'X')
-                      .map((s) => getName(s))
+                      .filter((s) => getCellShiftCode(s, tomorrow.dateStr) === 'X')
+                      .map((s) => getName(s, tomorrow.dateStr))
                       .join(', ')}
                   </div>
+                  {tomorrow.supportShift && tomorrow.supportShift.shiftCode !== 'X' && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                      지원조: {tomorrow.supportShift.shiftCode} ({tomorrow.supportShift.badge})
+                    </span>
+                  )}
                 </div>
 
                 {/* Bang-an-bu Day Support Tomorrow */}
@@ -489,7 +580,8 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({
           {next14Days.map((d) => {
             const shift = d.shifts.find((s) => s.slotNo === selectedSlot);
             const isToday = d.dateStr === today?.dateStr;
-            const code = shift?.shiftCode || 'X';
+            const rawCode = shift?.shiftCode || 'X';
+            const code = shift ? getCellShiftCode(shift, d.dateStr) : rawCode;
 
             return (
               <div

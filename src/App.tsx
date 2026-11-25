@@ -29,6 +29,11 @@ export default function App() {
   // Pre-generate full schedules
   const schedule2026 = useMemo(() => engine.generateSchedule('2026-01-01', '2026-12-31'), [engine]);
   const schedule2027 = useMemo(() => engine.generateSchedule('2027-01-01', '2027-12-31'), [engine]);
+  const schedule2028 = useMemo(() => engine.generateSchedule('2028-01-01', '2028-12-31'), [engine]);
+  const fullSchedule = useMemo(
+    () => [...schedule2026, ...schedule2027, ...schedule2028],
+    [schedule2026, schedule2027, schedule2028]
+  );
 
   // UI State: Default to current year (2026 or 2027) based on today's real date
   const defaultYear = useMemo(() => {
@@ -154,10 +159,12 @@ export default function App() {
 
         {activeTab === 'dashboard' && (
           <TodayDashboard
-            schedule={activeSchedule}
+            schedule={fullSchedule}
             anonymize={anonymize}
             year={year}
+            onYearChange={setYear}
             onOpenBanganTab={() => setActiveTab('bangan')}
+            overrides={overrides}
           />
         )}
 
