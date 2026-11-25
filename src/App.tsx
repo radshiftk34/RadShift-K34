@@ -139,6 +139,8 @@ export default function App() {
           <AnnualScheduleView
             anonymize={anonymize}
             onExportExcel={handleExportExcel}
+            initialYear={year}
+            onYearChange={setYear}
           />
         )}
 

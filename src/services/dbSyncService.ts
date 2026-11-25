@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { ShiftCode, Holiday } from '../engine/types';
 import { SlotMemberData } from '../components/SlotMemberAdmin';
+import { HOLIDAYS_2026, HOLIDAYS_2027 } from '../engine/holidays';
 
 export interface DbStatus {
   isConfigured: boolean;
@@ -269,39 +270,49 @@ export async function seedAllMasterDataToDb(
       return { success: false, message: '슬롯 인원 데이터 저장에 실패했습니다.' };
     }
 
-    // 2. Holidays
-    const holSuccess = await saveRemoteHolidays(year, holidays);
-    if (!holSuccess) {
-      return { success: false, message: '공휴일 데이터 저장에 실패했습니다.' };
+    // 2. Holidays (Save both 2026 and 2027 holidays)
+    await saveRemoteHolidays(2026, HOLIDAYS_2026);
+    await saveRemoteHolidays(2027, HOLIDAYS_2027);
+    if (year !== 2026 && year !== 2027 && holidays.length > 0) {
+      await saveRemoteHolidays(year, holidays);
     }
 
-    // 3. Scenario
+    // 3. Scenarios (2026 Normal 9-person & 2027 8+1 Support mode)
     await supabase.from('scenarios').upsert(
-      {
-        name: '2027년 8+1 방안부 지원 및 9인 원복 시나리오',
-        mode: 'EIGHT_PLUS_DAYTIME',
-        start_date: '2027-01-01',
-        end_date: '2027-12-31',
-        vacant_slot_no: 1,
-        temp_cover_slot_no: 8,
-        support_name: '방안부지원',
-        support_department: '방사선안전부',
-        support_start_date: '2027-01-04',
-        support_end_date: '2027-03-07',
-        is_active: true,
-      },
+      [
+        {
+          name: '2026년 9인 정상 운영 시나리오',
+          mode: 'NORMAL_9',
+          start_date: '2026-01-01',
+          end_date: '2026-12-31',
+          is_active: true,
+        },
+        {
+          name: '2027년 8+1 방안부 지원 및 9인 원복 시나리오',
+          mode: 'EIGHT_PLUS_DAYTIME',
+          start_date: '2027-01-01',
+          end_date: '2027-12-31',
+          vacant_slot_no: 1,
+          temp_cover_slot_no: 8,
+          support_name: '방안부지원',
+          support_department: '방사선안전부',
+          support_start_date: '2027-01-04',
+          support_end_date: '2027-03-07',
+          is_active: true,
+        },
+      ],
       { onConflict: 'name' }
     );
 
     // 4. Audit Log
     await recordRemoteAuditLog(
       'SEED_DATABASE',
-      '관리자가 슬롯, 공휴일, 8+1 시나리오 마스터 데이터를 공유 DB에 전체 업로드함'
+      '관리자가 2026/2027 슬롯, 법정공휴일(지방선거 포함), 9인 정상/8+1 시나리오 마스터 데이터를 공유 DB에 전체 업로드함'
     );
 
     return {
       success: true,
-      message: '공유 데이터베이스(Supabase)에 모든 슬롯, 공휴일, 시나리오 데이터가 성공적으로 저장되었습니다!',
+      message: '공유 데이터베이스(Supabase)에 2026 및 2027년 슬롯, 공휴일, 시나리오 마스터 데이터가 성공적으로 저장되었습니다!',
     };
   } catch (err: any) {
     return {

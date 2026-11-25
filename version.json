@@ -1,12 +1,25 @@
 {
-  "version": "1.4.6",
-  "releaseDate": "2026-11-25",
-  "buildNumber": 11,
+  "version": "1.5.0",
+  "releaseDate": "2026-11-26",
+  "buildNumber": 12,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.0",
+      "date": "2026-11-26",
+      "build": 12,
+      "title": "2026년도 공식 교대근무표 데이터 탑재, 2026/2027 연간 양식 전환 및 공유 DB 동기화",
+      "notes": [
+        "2026년도 고리3,4호기 HP 교대근무표(9인 정상 체제·12일 주기·21일 통상순환·84일 호기이동) 파싱 및 JSON 데이터(master2026Data) 완비",
+        "연간 근무표(AnnualScheduleView) 상단에 2026년(9인 정상)/2027년(8+1 지원) 연도 선택 토글 제공 및 엑셀 원본 양식(시트 1, 2, 3) 완벽 렌더링",
+        "월간 근무표(MonthlyMatrix) 2026년 조회 시 공식 2026년도 마스터 데이터 행 및 통상Day 필터 즉시 반영",
+        "2026년 법정공휴일(2026-06-03 지방선거 포함) 엔진 및 DB 스키마 등록",
+        "공유 DB(Supabase) 설정 스크립트(complete_setup.sql) 및 원클릭 마스터 시드 함수에 2026 슬롯·공휴일·시나리오 데이터 전체 탑재"
+      ]
+    },
     {
       "version": "1.4.6",
       "date": "2026-11-25",

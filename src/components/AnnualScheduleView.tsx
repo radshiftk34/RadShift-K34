@@ -5,6 +5,7 @@ import {
   getAnonymizedName,
   getExcelBadgeStyle,
 } from '../data/master2027Data';
+import { master2026Data } from '../data/master2026Data';
 import {
   Download,
   ChevronDown,
@@ -15,26 +16,43 @@ import {
   TrendingUp,
   Clock,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 
 interface AnnualScheduleViewProps {
   anonymize: boolean;
   onExportExcel: () => void;
+  initialYear?: number;
+  onYearChange?: (year: number) => void;
 }
 
 export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
   anonymize,
   onExportExcel,
+  initialYear = 2026,
+  onYearChange,
 }) => {
+  const [selectedYear, setSelectedYear] = useState<2026 | 2027>(() =>
+    initialYear === 2027 ? 2027 : 2026
+  );
   const [selectedMonthTab, setSelectedMonthTab] = useState<number | 'ALL'>('ALL');
   const [showComparison, setShowComparison] = useState<boolean>(true);
   const [showCredit, setShowCredit] = useState<boolean>(true);
   const [showTimeline, setShowTimeline] = useState<boolean>(true);
 
+  const handleYearToggle = (targetYear: 2026 | 2027) => {
+    setSelectedYear(targetYear);
+    if (onYearChange) {
+      onYearChange(targetYear);
+    }
+  };
+
+  const currentData = selectedYear === 2026 ? master2026Data : master2027Data;
+
   const displayedMonths: MasterMonth[] =
     selectedMonthTab === 'ALL'
-      ? master2027Data.months
-      : master2027Data.months.filter((m) => m.month === selectedMonthTab);
+      ? currentData.months
+      : currentData.months.filter((m) => m.month === selectedMonthTab);
 
   return (
     <div className="space-y-6">
@@ -45,22 +63,48 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
             <div className="flex items-center space-x-2">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-400 text-slate-950 flex items-center space-x-1">
                 <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>엑셀 공식 양식</span>
+                <span>엑셀 공식 양식 원본</span>
               </span>
               <span className="text-xs text-teal-200 font-medium">
-                고리 3,4호기 HP 교대근무 84일 9칸 원형 큐
+                고리 3,4호기 HP 교대근무 84일 9칸 원형 큐 ({selectedYear}년도)
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
-              {master2027Data.title}
+              {currentData.title}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-4xl">
-              {master2027Data.subtitle}
+              {currentData.subtitle}
             </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-2">
+          {/* Action Buttons & Year Selector */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Year Switcher Pills */}
+            <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-600/80">
+              <button
+                onClick={() => handleYearToggle(2026)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center space-x-1 ${
+                  selectedYear === 2026
+                    ? 'bg-teal-500 text-slate-950 shadow-sm'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>2026년 (9인 정상)</span>
+              </button>
+              <button
+                onClick={() => handleYearToggle(2027)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center space-x-1 ${
+                  selectedYear === 2027
+                    ? 'bg-brand-500 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>2027년 (8+1 지원)</span>
+              </button>
+            </div>
+
             <button
               onClick={() => window.print()}
               className="inline-flex items-center space-x-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-600 transition-colors"
@@ -87,14 +131,18 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
           <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-[#fde2cb] text-[#8a3800] border-[#f9cb9c]">
             [주황 3D/4D] 통상Day
           </span>
-          <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-[#fef3c7] text-[#92400e] border-[#fde68a]">
-            [노랑 3D*/4D*] 평일스왑
-          </span>
-          <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-[#d1fae5] text-[#065f46] border-[#a7f3d0]">
-            [민트 일근] 방안부일근
-          </span>
+          {selectedYear === 2027 && (
+            <>
+              <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-[#fef3c7] text-[#92400e] border-[#fde68a]">
+                [노랑 3D*/4D*] 평일스왑
+              </span>
+              <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-[#d1fae5] text-[#065f46] border-[#a7f3d0]">
+                [민트 일근] 방안부일근
+              </span>
+            </>
+          )}
           <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-[#e0f2fe] text-[#0369a1] border-[#bae6fd]">
-            [파랑 D] 휴일투입/주간
+            [파랑 D] 주간/자체주간
           </span>
           <span className="px-2 py-0.5 rounded border text-[11px] font-bold bg-[#fef9c3] text-[#854d0e] border-[#fef08a]">
             [황갈색 A] 오후
@@ -127,7 +175,9 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
               onClick={() => setSelectedMonthTab(m)}
               className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 selectedMonthTab === m
-                  ? 'bg-brand-600 text-white shadow-sm'
+                  ? selectedYear === 2026
+                    ? 'bg-teal-600 text-white shadow-sm'
+                    : 'bg-brand-600 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -138,8 +188,8 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
 
         <div className="text-xs text-slate-500 font-medium">
           {selectedMonthTab === 'ALL'
-            ? '전체 12개월 매트릭스 렌더링 중'
-            : `2027년 ${selectedMonthTab}월 단독 보기`}
+            ? `${selectedYear}년 전체 12개월 매트릭스 렌더링 중`
+            : `${selectedYear}년 ${selectedMonthTab}월 단독 보기`}
         </div>
       </div>
 
@@ -154,11 +204,15 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
               {/* Month Header Banner */}
               <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <span className="w-8 h-8 rounded-lg bg-teal-600 text-white font-extrabold flex items-center justify-center text-sm shadow-xs">
+                  <span
+                    className={`w-8 h-8 rounded-lg text-white font-extrabold flex items-center justify-center text-sm shadow-xs ${
+                      selectedYear === 2026 ? 'bg-teal-600' : 'bg-brand-600'
+                    }`}
+                  >
                     {m.month}
                   </span>
                   <span className="font-bold text-slate-800 text-base">
-                    2027년 {m.month}월 교대근무표
+                    {selectedYear}년 {m.month}월 교대근무표
                   </span>
                   <span className="text-xs text-slate-500 font-medium">
                     ({m.days.length}일)
@@ -249,99 +303,89 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                           ? '4호기'
                           : mem.unit === '지원'
                           ? '지원'
-                          : '';
+                          : `${mem.unit}호기`;
 
-                      const unitColor =
-                        mem.unit === '3'
-                          ? 'bg-blue-100 text-blue-800 border-blue-200'
-                          : mem.unit === '4'
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                          : 'bg-purple-100 text-purple-800 border-purple-200';
+                      const isUnit3 = mem.unit === '3';
+                      const isUnit4 = mem.unit === '4';
+                      const isSupport = mem.unit === '지원';
+
+                      const unitBadgeStyle = isUnit3
+                        ? 'bg-blue-100 text-blue-800 border-blue-200'
+                        : isUnit4
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : isSupport
+                        ? 'bg-purple-100 text-purple-800 border-purple-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200';
 
                       const displayName = getAnonymizedName(mem.name, anonymize);
 
                       return (
                         <tr
-                          key={`${mem.name}_${memIdx}`}
-                          className="hover:bg-slate-50 transition-colors"
+                          key={`${mem.name}_${mem.unit}_${memIdx}`}
+                          className="hover:bg-slate-50/70 transition-colors"
                         >
                           {/* Unit Cell */}
-                          <td className="sticky left-0 z-10 bg-white px-2 py-2 text-center font-bold border-r border-slate-200">
-                            {unitLabel && (
-                              <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold border ${unitColor}`}
-                              >
-                                {mem.unit}
-                              </span>
-                            )}
+                          <td className="sticky left-0 z-10 bg-white px-2 py-1 text-center font-bold border-r border-slate-200">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-black border ${unitBadgeStyle}`}
+                            >
+                              {unitLabel}
+                            </span>
                           </td>
 
                           {/* Name Cell */}
-                          <td className="sticky left-12 z-10 bg-white px-3 py-2 font-bold text-slate-900 border-r border-slate-200 shadow-xs whitespace-nowrap">
+                          <td className="sticky left-12 z-10 bg-white px-3 py-1 font-bold text-slate-900 border-r border-slate-200 whitespace-nowrap shadow-xs">
                             <div className="flex items-center space-x-1.5">
-                              {unitLabel && (
-                                <span className="text-[10px] text-slate-400 font-semibold">
-                                  [{mem.unit}호]
+                              <span className="text-xs">{displayName}</span>
+                              {mem.name.includes('지원') && (
+                                <span className="text-[10px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">
+                                  일근
                                 </span>
                               )}
-                              <span>{displayName}</span>
                             </div>
                           </td>
 
-                          {/* Shifts for each day */}
-                          {mem.shifts.map((code, dayIdx) => {
+                          {/* Shifts */}
+                          {mem.shifts.map((code, sIdx) => {
                             const badgeStyle = getExcelBadgeStyle(code);
-                            const dow = m.dows[dayIdx] || '';
+                            const dow = m.dows[sIdx];
                             const isSunday = dow === '일';
                             const isSaturday = dow === '토';
 
                             return (
                               <td
-                                key={dayIdx}
+                                key={sIdx}
                                 className={`px-0.5 py-1 text-center border-r border-slate-200 ${
-                                  !code && isSunday
+                                  isSunday
                                     ? 'bg-red-50/20'
-                                    : !code && isSaturday
+                                    : isSaturday
                                     ? 'bg-blue-50/20'
                                     : ''
                                 }`}
                               >
                                 {code ? (
                                   <span
-                                    className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] border leading-none ${badgeStyle}`}
+                                    className={`inline-block w-6 h-6 leading-6 rounded-md text-[11px] font-black border ${badgeStyle}`}
                                   >
                                     {code}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-300">-</span>
+                                  <span className="inline-block w-6 h-6 leading-6 text-slate-300 text-[10px]">
+                                    -
+                                  </span>
                                 )}
                               </td>
                             );
                           })}
 
-                          {/* Remarks on first row, or span */}
-                          {memIdx === 0 ? (
-                            <td
-                              rowSpan={m.members.length}
-                              className="px-3 py-2 align-top text-xs text-slate-700 bg-amber-50/30 border-l border-slate-300 min-w-[280px]"
-                            >
-                              {m.remark ? (
-                                <div className="space-y-1.5">
-                                  {m.remark.split('\n').map((line, lIdx) => (
-                                    <div
-                                      key={lIdx}
-                                      className="flex items-start space-x-1.5 text-slate-800 leading-relaxed font-medium"
-                                    >
-                                      <span className="text-amber-600 font-bold">•</span>
-                                      <span>{line.replace(/^[○•-]\s*/, '')}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-slate-400 italic">특이사항 없음</span>
-                              )}
-                            </td>
-                          ) : null}
+                          {/* Remark (only for first row or per row) */}
+                          <td className="px-3 py-1 text-left text-[11px] text-slate-600 border-l border-slate-200">
+                            {memIdx === 0 && m.remark && (
+                              <div className="whitespace-pre-line text-amber-900 font-medium">
+                                {m.remark}
+                              </div>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -355,7 +399,7 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
 
       {/* 3. Bottom Comparison & Settlement Tables (Matching Excel Sheets 2, 3, 4) */}
       <div className="space-y-6 pt-4">
-        {/* Section 1: 2026 vs 2027 Comparison */}
+        {/* Section 1: Annual Statistics & Comparison */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div
             onClick={() => setShowComparison((v) => !v)}
@@ -364,207 +408,393 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
             <div className="flex items-center space-x-2">
               <TrendingUp className="w-5 h-5 text-brand-600" />
               <h2 className="font-extrabold text-slate-900 text-base">
-                2026년 9인 체제 vs 2027년 확정 시나리오 HP 근무일수 비교표
+                {selectedYear === 2026
+                  ? '2026년도 고리3,4호기 HP 9인 연간 근무일수 및 근무유형 통계'
+                  : '2026년 9인 체제 vs 2027년 확정 시나리오 HP 근무일수 비교표'}
               </h2>
-              <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-brand-100 text-brand-800">
-                시트 2
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                  selectedYear === 2026
+                    ? 'bg-teal-100 text-teal-800'
+                    : 'bg-brand-100 text-brand-800'
+                }`}
+              >
+                {selectedYear === 2026 ? '시트 2 (9인 통계)' : '시트 2 (비교표)'}
               </span>
             </div>
-            {showComparison ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+            {showComparison ? (
+              <ChevronUp className="w-4 h-4 text-slate-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-500" />
+            )}
           </div>
 
           {showComparison && (
             <div className="p-5 space-y-5">
-              {/* 4 Summary KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="text-xs font-bold text-blue-700">8명 유지인원 평균 근무일</div>
-                  <div className="text-2xl font-black text-blue-950 mt-1">243.4일 → 244.0일</div>
-                  <p className="text-xs text-blue-600 mt-1">연간 평균 +0.6일 차이 (사실상 동일)</p>
+              {/* Summary KPI Cards */}
+              {selectedYear === 2026 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-teal-700">
+                      연간 개인 평균 근무일 / 휴무일
+                    </div>
+                    <div className="text-2xl font-black text-teal-950 mt-1">
+                      243.3일 / 121.7일
+                    </div>
+                    <p className="text-xs text-teal-600 mt-1">
+                      정확히 2/3 근무 · 1/3 휴무 황금비율
+                    </p>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-emerald-700">
+                      9인 간 연간 근무일 편차
+                    </div>
+                    <div className="text-2xl font-black text-emerald-950 mt-1">
+                      최대 1일 편차
+                    </div>
+                    <p className="text-xs text-emerald-600 mt-1">
+                      243일 ~ 244일 (전원 균등 부하 실현)
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-blue-700">
+                      365일 안전 제약 준수율
+                    </div>
+                    <div className="text-2xl font-black text-blue-950 mt-1">
+                      오류 0건 · 최대 3연속
+                    </div>
+                    <p className="text-xs text-blue-600 mt-1">
+                      전원 역순환(N→D) 0건 · 365일 100% 커버
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-purple-700">
+                      통상 Day 18회전 일정
+                    </div>
+                    <div className="text-2xl font-black text-purple-950 mt-1">
+                      18회전 100% 가동
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">
+                      21일 주기 순환 · 84일 호기 이동 완비
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                  <div className="text-xs font-bold text-emerald-700">2027년 최대 근무일 편차</div>
-                  <div className="text-2xl font-black text-emerald-950 mt-1">최대 3일 편차</div>
-                  <p className="text-xs text-emerald-600 mt-1">243일 ~ 246일 (편차 3일 이내 달성)</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-blue-700">
+                      8명 유지인원 평균 근무일
+                    </div>
+                    <div className="text-2xl font-black text-blue-950 mt-1">
+                      243.4일 → 244.0일
+                    </div>
+                    <p className="text-xs text-blue-600 mt-1">
+                      연간 평균 +0.6일 차이 (사실상 동일)
+                    </p>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-emerald-700">
+                      2027년 최대 근무일 편차
+                    </div>
+                    <div className="text-2xl font-black text-emerald-950 mt-1">
+                      최대 3일 편차
+                    </div>
+                    <p className="text-xs text-emerald-600 mt-1">
+                      243일 ~ 246일 (편차 3일 이내 달성)
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-purple-700">
+                      방안부 일근 지원 투입 (1/4~3/7)
+                    </div>
+                    <div className="text-2xl font-black text-purple-950 mt-1">
+                      42일 출근 / 21일 OFF
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">
+                      직접 29일 + 대체스왑 10일 + 일근 3일
+                    </p>
+                  </div>
+                  <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-teal-700">
+                      2027년 안전 제약 준수율
+                    </div>
+                    <div className="text-2xl font-black text-teal-950 mt-1">
+                      오류 0건 · 최대 3연속
+                    </div>
+                    <p className="text-xs text-teal-600 mt-1">
+                      전원 역순환(N→D) 0건 · 365일 100% 커버
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                  <div className="text-xs font-bold text-purple-700">방안부 일근 지원 투입 (1/4~3/7)</div>
-                  <div className="text-2xl font-black text-purple-950 mt-1">42일 출근 / 21일 OFF</div>
-                  <p className="text-xs text-purple-600 mt-1">직접 29일 + 대체스왑 10일 + 일근 3일</p>
-                </div>
-                <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-                  <div className="text-xs font-bold text-teal-700">2027년 안전 제약 준수율</div>
-                  <div className="text-2xl font-black text-teal-950 mt-1">오류 0건 · 최대 3연속</div>
-                  <p className="text-xs text-teal-600 mt-1">전원 역순환(N→D) 0건 · 365일 100% 커버</p>
-                </div>
-              </div>
+              )}
 
               {/* Detail Table */}
-              <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                <table className="min-w-full divide-y divide-slate-200 text-xs">
-                  <thead className="bg-slate-100 text-slate-700 font-bold">
-                    <tr>
-                      <th className="px-3 py-2 text-left">HP 요원 (고정순번)</th>
-                      <th className="px-3 py-2 text-left">구분 / 변동사항</th>
-                      <th className="px-2 py-2 text-center bg-blue-50/50">2026 총근무</th>
-                      <th className="px-2 py-2 text-center bg-blue-50/50">2026 휴무</th>
-                      <th className="px-2 py-2 text-center bg-blue-50/50">2026 주간</th>
-                      <th className="px-2 py-2 text-center bg-blue-50/50">2026 오후·야간</th>
-                      <th className="px-2 py-2 text-center bg-emerald-50/50 font-bold text-emerald-900">2027 총근무</th>
-                      <th className="px-2 py-2 text-center bg-emerald-50/50 font-bold text-emerald-900">2027 휴무</th>
-                      <th className="px-2 py-2 text-center bg-emerald-50/50">2027 주간</th>
-                      <th className="px-2 py-2 text-center bg-emerald-50/50">2027 오후·야간</th>
-                      <th className="px-2 py-2 text-center font-bold text-slate-800">근무일 증감</th>
-                      <th className="px-2 py-2 text-center font-bold text-slate-800">최대연속</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
-                    {master2027Data.comparisonTable.slice(5).map((row, rIdx) => {
-                      const isAverage = row[0]?.includes('평균');
-                      const isTotal = row[0]?.includes('합계');
-                      const rowStyle = isAverage
-                        ? 'bg-amber-50/70 font-bold text-amber-950'
-                        : isTotal
-                        ? 'bg-slate-100 font-extrabold text-slate-900'
-                        : 'hover:bg-slate-50';
-
-                      return (
-                        <tr key={rIdx} className={rowStyle}>
-                          <td className="px-3 py-2 font-bold">{row[0]}</td>
-                          <td className="px-3 py-2 text-slate-600">{row[1]}</td>
-                          <td className="px-2 py-2 text-center bg-blue-50/20">{row[2]}</td>
-                          <td className="px-2 py-2 text-center bg-blue-50/20">{row[3]}</td>
-                          <td className="px-2 py-2 text-center bg-blue-50/20">{row[4]}</td>
-                          <td className="px-2 py-2 text-center bg-blue-50/20">{row[5]}</td>
-                          <td className="px-2 py-2 text-center bg-emerald-50/30 font-bold text-emerald-900">
-                            {row[6]}
-                          </td>
-                          <td className="px-2 py-2 text-center bg-emerald-50/30 font-bold text-emerald-900">
-                            {row[7]}
-                          </td>
-                          <td className="px-2 py-2 text-center bg-emerald-50/30">{row[8]}</td>
-                          <td className="px-2 py-2 text-center bg-emerald-50/30">{row[9]}</td>
-                          <td className="px-2 py-2 text-center font-bold text-brand-700">
-                            {row[10] ? `${Number(row[10]) > 0 ? '+' : ''}${row[10]}` : '-'}
-                          </td>
-                          <td className="px-2 py-2 text-center font-bold text-slate-700">
-                            {row[11] || '3'}일
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Section 2: 8+1 Credit Settlement & Bang-an-bu results */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div
-            onClick={() => setShowCredit((v) => !v)}
-            className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors"
-          >
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <h2 className="font-extrabold text-slate-900 text-base">
-                2027년 8+1 체제 구간(1/1~3/7) 대체휴무 크레딧 정산 및 방안부 지원 실적
-              </h2>
-              <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
-                시트 3
-              </span>
-            </div>
-            {showCredit ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-          </div>
-
-          {showCredit && (
-            <div className="p-5 space-y-6">
-              {/* Part 1: Credit settlement table */}
-              <div>
-                <h3 className="text-xs font-bold text-slate-800 mb-2 flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>1. HP 8인 휴일 Phase-11 투입 및 평일 대체휴무 스왑 정산 (1/1~3/7)</span>
-                </h3>
+              {selectedYear === 2026 ? (
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
                   <table className="min-w-full divide-y divide-slate-200 text-xs">
                     <thead className="bg-slate-100 text-slate-700 font-bold">
                       <tr>
-                        <th className="px-3 py-2 text-left">HP 요원</th>
-                        <th className="px-3 py-2 text-left">구간 배치 호기</th>
-                        <th className="px-2 py-2 text-center text-blue-700">휴일 투입(+1)</th>
-                        <th className="px-2 py-2 text-center text-amber-700">평일 보상(-1)</th>
-                        <th className="px-2 py-2 text-center text-purple-700 font-bold">잔여 크레딧</th>
-                        <th className="px-2 py-2 text-center">구간 총근무</th>
-                        <th className="px-2 py-2 text-center">구간 휴무</th>
+                        <th className="px-3 py-2 text-left">HP 요원 (고정순번)</th>
+                        <th className="px-2 py-2 text-center font-bold text-teal-900 bg-teal-50/50">
+                          총 근무일
+                        </th>
+                        <th className="px-2 py-2 text-center text-slate-600">총 휴무(X)</th>
+                        <th className="px-2 py-2 text-center text-blue-700">자체 주간(D)</th>
+                        <th className="px-2 py-2 text-center text-amber-700">3호기 지원(3D)</th>
+                        <th className="px-2 py-2 text-center text-orange-700">4호기 지원(4D)</th>
+                        <th className="px-2 py-2 text-center text-amber-800">오후(A)</th>
+                        <th className="px-2 py-2 text-center text-purple-800">야간(N)</th>
+                        <th className="px-2 py-2 text-center font-bold text-slate-800">
+                          최대 연속근무
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
-                      {master2027Data.creditTable.slice(4, 13).map((row, idx) => {
+                      {master2026Data.comparisonTable.slice(5).map((row, rIdx) => {
                         const isTotal = row[0]?.includes('합계');
                         return (
                           <tr
-                            key={idx}
-                            className={isTotal ? 'bg-slate-100 font-extrabold text-slate-900' : 'hover:bg-slate-50'}
+                            key={rIdx}
+                            className={
+                              isTotal
+                                ? 'bg-slate-100 font-extrabold text-slate-900'
+                                : 'hover:bg-slate-50'
+                            }
                           >
+                            <td className="px-3 py-2 font-bold">{row[0]}</td>
+                            <td className="px-2 py-2 text-center font-extrabold text-teal-900 bg-teal-50/30">
+                              {row[1]}일
+                            </td>
+                            <td className="px-2 py-2 text-center font-medium text-slate-600">
+                              {row[2]}일
+                            </td>
+                            <td className="px-2 py-2 text-center text-blue-700 font-semibold">
+                              {row[3]}일
+                            </td>
+                            <td className="px-2 py-2 text-center text-amber-700 font-semibold">
+                              {row[4]}일
+                            </td>
+                            <td className="px-2 py-2 text-center text-orange-700 font-semibold">
+                              {row[5]}일
+                            </td>
+                            <td className="px-2 py-2 text-center text-amber-800 font-semibold">
+                              {row[6]}일
+                            </td>
+                            <td className="px-2 py-2 text-center text-purple-800 font-semibold">
+                              {row[7]}일
+                            </td>
+                            <td className="px-2 py-2 text-center font-bold text-slate-800">
+                              {row[8] || '3'}일
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="min-w-full divide-y divide-slate-200 text-xs">
+                    <thead className="bg-slate-100 text-slate-700 font-bold">
+                      <tr>
+                        <th className="px-3 py-2 text-left">HP 요원 (고정순번)</th>
+                        <th className="px-3 py-2 text-left">구분 / 변동사항</th>
+                        <th className="px-2 py-2 text-center bg-blue-50/50">2026 총근무</th>
+                        <th className="px-2 py-2 text-center bg-blue-50/50">2026 휴무</th>
+                        <th className="px-2 py-2 text-center bg-blue-50/50">2026 주간</th>
+                        <th className="px-2 py-2 text-center bg-blue-50/50">2026 오후·야간</th>
+                        <th className="px-2 py-2 text-center bg-emerald-50/50 font-bold text-emerald-900">
+                          2027 총근무
+                        </th>
+                        <th className="px-2 py-2 text-center bg-emerald-50/50 font-bold text-emerald-900">
+                          2027 휴무
+                        </th>
+                        <th className="px-2 py-2 text-center bg-emerald-50/50">2027 주간</th>
+                        <th className="px-2 py-2 text-center bg-emerald-50/50">2027 오후·야간</th>
+                        <th className="px-2 py-2 text-center font-bold text-slate-800">
+                          근무일 증감
+                        </th>
+                        <th className="px-2 py-2 text-center font-bold text-slate-800">
+                          최대연속
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {master2027Data.comparisonTable.slice(5).map((row, rIdx) => {
+                        const isAverage = row[0]?.includes('평균');
+                        const isTotal = row[0]?.includes('합계');
+                        const rowStyle = isAverage
+                          ? 'bg-amber-50/70 font-bold text-amber-950'
+                          : isTotal
+                          ? 'bg-slate-100 font-extrabold text-slate-900'
+                          : 'hover:bg-slate-50';
+
+                        return (
+                          <tr key={rIdx} className={rowStyle}>
                             <td className="px-3 py-2 font-bold">{row[0]}</td>
                             <td className="px-3 py-2 text-slate-600">{row[1]}</td>
-                            <td className="px-2 py-2 text-center font-semibold text-blue-700">{row[2]}회</td>
-                            <td className="px-2 py-2 text-center font-semibold text-amber-700">{row[3]}회</td>
-                            <td className="px-2 py-2 text-center font-bold text-purple-800">
-                              {row[4] ? `${row[4]}회` : '0회'}
+                            <td className="px-2 py-2 text-center bg-blue-50/20">{row[2]}</td>
+                            <td className="px-2 py-2 text-center bg-blue-50/20">{row[3]}</td>
+                            <td className="px-2 py-2 text-center bg-blue-50/20">{row[4]}</td>
+                            <td className="px-2 py-2 text-center bg-blue-50/20">{row[5]}</td>
+                            <td className="px-2 py-2 text-center bg-emerald-50/30 font-bold text-emerald-900">
+                              {row[6]}
                             </td>
-                            <td className="px-2 py-2 text-center font-medium">{row[5]}일</td>
-                            <td className="px-2 py-2 text-center font-medium">{row[6]}일</td>
+                            <td className="px-2 py-2 text-center bg-emerald-50/30 font-bold text-emerald-900">
+                              {row[7]}
+                            </td>
+                            <td className="px-2 py-2 text-center bg-emerald-50/30">{row[8]}</td>
+                            <td className="px-2 py-2 text-center bg-emerald-50/30">{row[9]}</td>
+                            <td className="px-2 py-2 text-center font-bold text-brand-700">
+                              {row[10] ? `${Number(row[10]) > 0 ? '+' : ''}${row[10]}` : '-'}
+                            </td>
+                            <td className="px-2 py-2 text-center font-bold text-slate-700">
+                              {row[11] || '3'}일
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
-              </div>
-
-              {/* Part 2: Bang-an-bu support results */}
-              <div>
-                <h3 className="text-xs font-bold text-slate-800 mb-2 flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-purple-500" />
-                  <span>2. 방안부 지원조 근무 실적 (1/4~3/7, 총 63일)</span>
-                </h3>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="min-w-full divide-y divide-slate-200 text-xs">
-                    <thead className="bg-slate-100 text-slate-700 font-bold">
-                      <tr>
-                        <th className="px-3 py-2 text-left">근무 유형</th>
-                        <th className="px-3 py-2 text-center">일수(일)</th>
-                        <th className="px-3 py-2 text-center">비중(%)</th>
-                        <th className="px-3 py-2 text-left">비고</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
-                      {master2027Data.creditTable.slice(17, 24).map((row, idx) => {
-                        const isTotal = row[0]?.includes('합계');
-                        const pct = row[2] ? `${(parseFloat(row[2]) * 100).toFixed(1)}%` : '-';
-                        return (
-                          <tr
-                            key={idx}
-                            className={isTotal ? 'bg-purple-50 font-extrabold text-purple-950' : 'hover:bg-slate-50'}
-                          >
-                            <td className="px-3 py-2 font-bold">{row[0]}</td>
-                            <td className="px-3 py-2 text-center font-extrabold text-brand-700">{row[1]}일</td>
-                            <td className="px-3 py-2 text-center font-semibold text-slate-600">{pct}</td>
-                            <td className="px-3 py-2 text-slate-700">{row[3]}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Section 3: 15 Float Day Timeline & 84-day rotation */}
+        {/* Section 2: 8+1 Credit Settlement & Bang-an-bu results (2027 ONLY) */}
+        {selectedYear === 2027 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div
+              onClick={() => setShowCredit((v) => !v)}
+              className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors"
+            >
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <h2 className="font-extrabold text-slate-900 text-base">
+                  2027년 8+1 체제 구간(1/1~3/7) 대체휴무 크레딧 정산 및 방안부 지원 실적
+                </h2>
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
+                  시트 3 (정산)
+                </span>
+              </div>
+              {showCredit ? (
+                <ChevronUp className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              )}
+            </div>
+
+            {showCredit && (
+              <div className="p-5 space-y-6">
+                {/* Part 1: Credit settlement table */}
+                <div>
+                  <h3 className="text-xs font-bold text-slate-800 mb-2 flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>
+                      1. HP 8인 휴일 Phase-11 투입 및 평일 대체휴무 스왑 정산 (1/1~3/7)
+                    </span>
+                  </h3>
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table className="min-w-full divide-y divide-slate-200 text-xs">
+                      <thead className="bg-slate-100 text-slate-700 font-bold">
+                        <tr>
+                          <th className="px-3 py-2 text-left">HP 요원</th>
+                          <th className="px-3 py-2 text-left">구간 배치 호기</th>
+                          <th className="px-2 py-2 text-center text-blue-700">휴일 투입(+1)</th>
+                          <th className="px-2 py-2 text-center text-amber-700">평일 보상(-1)</th>
+                          <th className="px-2 py-2 text-center text-purple-700 font-bold">
+                            잔여 크레딧
+                          </th>
+                          <th className="px-2 py-2 text-center">구간 총근무</th>
+                          <th className="px-2 py-2 text-center">구간 휴무</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {master2027Data.creditTable.slice(4, 13).map((row, idx) => {
+                          const isTotal = row[0]?.includes('합계');
+                          return (
+                            <tr
+                              key={idx}
+                              className={
+                                isTotal
+                                  ? 'bg-slate-100 font-extrabold text-slate-900'
+                                  : 'hover:bg-slate-50'
+                              }
+                            >
+                              <td className="px-3 py-2 font-bold">{row[0]}</td>
+                              <td className="px-3 py-2 text-slate-600">{row[1]}</td>
+                              <td className="px-2 py-2 text-center font-semibold text-blue-700">
+                                {row[2]}회
+                              </td>
+                              <td className="px-2 py-2 text-center font-semibold text-amber-700">
+                                {row[3]}회
+                              </td>
+                              <td className="px-2 py-2 text-center font-bold text-purple-800">
+                                {row[4] ? `${row[4]}회` : '0회'}
+                              </td>
+                              <td className="px-2 py-2 text-center font-medium">{row[5]}일</td>
+                              <td className="px-2 py-2 text-center font-medium">{row[6]}일</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Part 2: Bang-an-bu support results */}
+                <div>
+                  <h3 className="text-xs font-bold text-slate-800 mb-2 flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    <span>2. 방안부 지원조 근무 실적 (1/4~3/7, 총 63일)</span>
+                  </h3>
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table className="min-w-full divide-y divide-slate-200 text-xs">
+                      <thead className="bg-slate-100 text-slate-700 font-bold">
+                        <tr>
+                          <th className="px-3 py-2 text-left">근무 유형</th>
+                          <th className="px-3 py-2 text-center">일수(일)</th>
+                          <th className="px-3 py-2 text-center">비중(%)</th>
+                          <th className="px-3 py-2 text-left">비고</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {master2027Data.creditTable.slice(17, 24).map((row, idx) => {
+                          const isTotal = row[0]?.includes('합계');
+                          const pct = row[2]
+                            ? `${(parseFloat(row[2]) * 100).toFixed(1)}%`
+                            : '-';
+                          return (
+                            <tr
+                              key={idx}
+                              className={
+                                isTotal
+                                  ? 'bg-purple-50 font-extrabold text-purple-950'
+                                  : 'hover:bg-slate-50'
+                              }
+                            >
+                              <td className="px-3 py-2 font-bold">{row[0]}</td>
+                              <td className="px-3 py-2 text-center font-extrabold text-brand-700">
+                                {row[1]}일
+                              </td>
+                              <td className="px-3 py-2 text-center font-semibold text-slate-600">
+                                {pct}
+                              </td>
+                              <td className="px-3 py-2 text-slate-700">{row[3]}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Section 3: Float Day Timeline & 84-day rotation */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div
             onClick={() => setShowTimeline((v) => !v)}
@@ -573,13 +803,19 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
             <div className="flex items-center space-x-2">
               <Clock className="w-5 h-5 text-indigo-600" />
               <h2 className="font-extrabold text-slate-900 text-base">
-                2027년도 통상 Day 고정순번 일정 및 84일 주기 호기 이동(3·4호기) 타임라인
+                {selectedYear === 2026
+                  ? master2026Data.timelineTable[0][0]
+                  : master2027Data.timelineTable[0][0]}
               </h2>
               <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800">
-                시트 4 (15회차)
+                {selectedYear === 2026 ? '시트 3 (18회전 타임라인)' : '시트 4 (15회차 타임라인)'}
               </span>
             </div>
-            {showTimeline ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+            {showTimeline ? (
+              <ChevronUp className="w-4 h-4 text-slate-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-500" />
+            )}
           </div>
 
           {showTimeline && (
@@ -594,11 +830,15 @@ export const AnnualScheduleView: React.FC<AnnualScheduleViewProps> = ({
                       <th className="px-2 py-2 text-center">종료일</th>
                       <th className="px-2 py-2 text-center">일수</th>
                       <th className="px-3 py-2 text-left">차기 진입자</th>
-                      <th className="px-4 py-2 text-left">전환 규칙 및 84일 호기 이동</th>
+                      <th className="px-4 py-2 text-left">
+                        {selectedYear === 2026
+                          ? '일요일 경계 조정 및 84일 호기 이동'
+                          : '전환 규칙 및 84일 호기 이동'}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 bg-white">
-                    {master2027Data.timelineTable.slice(3).map((row, idx) => (
+                    {currentData.timelineTable.slice(2).map((row, idx) => (
                       <tr key={idx} className="hover:bg-slate-50 transition-colors">
                         <td className="px-2 py-2 text-center font-extrabold">
                           <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold">

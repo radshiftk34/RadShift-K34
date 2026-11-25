@@ -7,6 +7,7 @@ import {
   getAnonymizedName,
   getExcelBadgeStyle,
 } from '../data/master2027Data';
+import { master2026Data } from '../data/master2026Data';
 import {
   ChevronLeft,
   ChevronRight,
@@ -100,10 +101,15 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
     [schedule, monthPrefix]
   );
 
-  // 2027 Master Month Data (from the uploaded Excel)
+  // Master Month Data (from the uploaded official Excel files for 2026 or 2027)
   const masterMonth = useMemo(() => {
-    if (year !== 2027) return null;
-    return master2027Data.months.find((m) => m.month === selectedMonth) || null;
+    if (year === 2026) {
+      return master2026Data.months.find((m) => m.month === selectedMonth) || null;
+    }
+    if (year === 2027) {
+      return master2027Data.months.find((m) => m.month === selectedMonth) || null;
+    }
+    return null;
   }, [year, selectedMonth]);
 
   // Jump to Today handler
@@ -159,8 +165,8 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
   }
 
   const dynamicRows: DisplayRow[] = useMemo(() => {
-    if (year === 2027 && masterMonth) {
-      // 2027: Use official 84-day circular queue rows from Excel
+    if ((year === 2026 || year === 2027) && masterMonth) {
+      // 2026 / 2027: Use official 84-day circular queue rows from Excel
       return masterMonth.members.map((mem, memIdx) => {
         const u = mem.unit === '3' ? '3호기' : mem.unit === '4' ? '4호기' : '지원';
         const shifts = mem.shifts.map((baseCode, dIdx) => {
@@ -259,7 +265,14 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
     if (unitFilter === 'ALL') return dynamicRows;
     if (unitFilter === '3U') return dynamicRows.filter((r) => r.unit === '3호기');
     if (unitFilter === '4U') return dynamicRows.filter((r) => r.unit === '4호기');
-    if (unitFilter === 'SUPPORT') return dynamicRows.filter((r) => r.unit === '지원');
+    if (unitFilter === 'SUPPORT') {
+      return dynamicRows.filter(
+        (r) =>
+          r.unit === '지원' ||
+          r.name.includes('지원') ||
+          r.shifts.some((s) => s.code.includes('3D') || s.code.includes('4D'))
+      );
+    }
     return dynamicRows;
   }, [dynamicRows, unitFilter]);
 
