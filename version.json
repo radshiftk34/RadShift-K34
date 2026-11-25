@@ -1,12 +1,23 @@
 {
-  "version": "1.5.2",
+  "version": "1.5.3",
   "releaseDate": "2026-11-26",
-  "buildNumber": 14,
+  "buildNumber": 15,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.3",
+      "date": "2026-11-26",
+      "build": 15,
+      "title": "버전 정보 및 업데이트 내역 L3 관리자 전용 열람 권한 적용",
+      "notes": [
+        "상단 헤더의 버전 배지 버튼(v1.5.x)을 L3 관리자(총괄관리자) 로그인 시에만 노출되도록 제어",
+        "하단 푸터의 '버전 (업데이트 내역)' 링크를 L3 관리자에게만 노출하고 version.json 버전과 동적 연동",
+        "L3 권한이 아닐 경우 VersionModal 렌더링을 차단하고 L3 관리자 전용 식별 배지 추가"
+      ]
+    },
     {
       "version": "1.5.2",
       "date": "2026-11-26",

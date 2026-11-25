@@ -13,6 +13,7 @@ import { SlotMemberAdmin } from './components/SlotMemberAdmin';
 import { OneStepTestModule } from './components/OneStepTestModule';
 import { AuthModal } from './components/AuthModal';
 import { VersionModal } from './components/VersionModal';
+import versionData from '../version.json';
 import { DbConnectionModal } from './components/DbConnectionModal';
 import { exportScheduleToExcel } from './utils/excelExport';
 import {
@@ -199,12 +200,15 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
           <div>
             <span className="font-semibold text-slate-700">RadShift_K34</span> | 한국수력원자력 고리 3,4호기 HP 교대근무 관리 시스템
-            <button
-              onClick={() => setIsVersionModalOpen(true)}
-              className="ml-2 text-brand-600 hover:text-brand-800 underline font-semibold"
-            >
-              버전 v1.4.0 (업데이트 내역)
-            </button>
+            {currentRole === 'L3_ADMIN' && (
+              <button
+                onClick={() => setIsVersionModalOpen(true)}
+                className="ml-2 text-brand-600 hover:text-brand-800 underline font-semibold"
+                title="시스템 버전 정보 및 업데이트 내역 (L3 관리자 전용)"
+              >
+                버전 v{versionData.version} (업데이트 내역)
+              </button>
+            )}
           </div>
           <div className="flex items-center space-x-4">
             <AuthModal
@@ -220,11 +224,13 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Version Modal */}
-      <VersionModal
-        isOpen={isVersionModalOpen}
-        onClose={() => setIsVersionModalOpen(false)}
-      />
+      {/* Version Modal (L3 관리자 전용) */}
+      {currentRole === 'L3_ADMIN' && (
+        <VersionModal
+          isOpen={isVersionModalOpen}
+          onClose={() => setIsVersionModalOpen(false)}
+        />
+      )}
 
       {/* DB Connection Modal */}
       <DbConnectionModal

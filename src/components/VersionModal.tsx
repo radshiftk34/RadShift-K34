@@ -25,6 +25,9 @@ export const VersionModal: React.FC<VersionModalProps> = ({ isOpen, onClose }) =
                 <span className="px-2 py-0.5 rounded-full text-xs font-black bg-white/20 text-white">
                   v{versionData.version}
                 </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-900">
+                  L3 관리자 전용
+                </span>
               </div>
               <p className="text-xs text-brand-100">{versionData.serviceName}</p>
             </div>
