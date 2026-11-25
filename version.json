@@ -1,12 +1,27 @@
 {
-  "version": "1.5.11",
+  "version": "1.5.12",
   "releaseDate": "2026-11-26",
-  "buildNumber": 23,
+  "buildNumber": 24,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.12",
+      "date": "2026-11-26",
+      "build": 24,
+      "title": "공유 DB 전체 저장 오류(42P10) 해결 및 슬롯 인원 정보 수정 시 DB 즉시 저장 연동",
+      "notes": [
+        "슬롯 인원 DB 저장 오류(PostgreSQL 42P10) 해결: rotation_slots의 ON CONFLICT 고유 제약조건 키를 'slot_no,member_name'으로 정확히 일치시켜 공유 DB 전체 저장 안정화",
+        "scenarios 시나리오 테이블 멱등적 업데이트 로직 개선으로 공유 DB 전체 저장 프로세스 100% 성공 보장",
+        "인원 정보 수정/추가 모달에서 '저장 반영' 클릭 시 공유 DB(rotation_slots)에 즉시 저장 연동 (로컬 및 원격 실시간 동기화)",
+        "인원 정보 DB 저장 중 스피너 표시 및 저장 완료/실패 시 실시간 플로팅 토스트 피드백 제공",
+        "인원 소속 슬롯 또는 이름 변경 시 기존 DB 레코드 자동 삭제 후 신규 등록(정합성 유지)",
+        "인원 이력 삭제 시 공유 DB에서도 즉시 삭제 연동",
+        "페이지 마운트 시 공유 DB(Supabase)로부터 최신 슬롯 인원 목록 자동 로드 적용"
+      ]
+    },
     {
       "version": "1.5.11",
       "date": "2026-11-26",

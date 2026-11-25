@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserRole } from '../services/supabaseClient';
 import { Holiday } from '../engine/types';
 import {
@@ -7,7 +7,13 @@ import {
 } from '../engine/holidays';
 import { runScenarioSimulation } from '../engine/scenarioEngine';
 import { ShiftEngine } from '../engine/shiftEngine';
-import { seedAllMasterDataToDb } from '../services/dbSyncService';
+import {
+  seedAllMasterDataToDb,
+  saveSingleRemoteSlot,
+  deleteRemoteSlot,
+  fetchRemoteSlots,
+  isSupabaseConfigured,
+} from '../services/dbSyncService';
 import {
   Shield,
   Users,
@@ -475,6 +481,43 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     },
   ]);
 
+  const [isSavingMember, setIsSavingMember] = useState(false);
+  const [originalEditingMember, setOriginalEditingMember] = useState<{
+    slotNo: number;
+    name: string;
+  } | null>(null);
+  const [dbNotification, setDbNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setDbNotification({ type, message });
+    setTimeout(() => {
+      setDbNotification(null);
+    }, 4000);
+  };
+
+  // Load slot members from Supabase on mount if available
+  useEffect(() => {
+    let isMounted = true;
+    async function initSlotsFromDb() {
+      if (!isSupabaseConfigured) return;
+      try {
+        const remoteSlots = await fetchRemoteSlots();
+        if (isMounted && remoteSlots && remoteSlots.length > 0) {
+          setMembers(remoteSlots);
+        }
+      } catch (err) {
+        console.error('Failed to load remote slots on mount:', err);
+      }
+    }
+    initSlotsFromDb();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // ---------------------------------------------------------------------------
   // 공식 근무표 기준 현재 기준일 원형 큐 슬롯 배정 목록 (1~9칸)
   // ---------------------------------------------------------------------------
@@ -564,6 +607,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
   const handleOpenAddMember = (slotNo: number) => {
     setIsAddingNew(true);
     setValidationError(null);
+    setOriginalEditingMember(null);
     setEditingMember({
       id: `m-${Date.now()}`,
       slotNo,
@@ -584,10 +628,11 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
   const handleOpenEditMember = (mem: SlotMemberData) => {
     setIsAddingNew(false);
     setValidationError(null);
+    setOriginalEditingMember({ slotNo: mem.slotNo, name: mem.name });
     setEditingMember({ ...mem });
   };
 
-  const handleSaveMember = () => {
+  const handleSaveMember = async () => {
     if (!editingMember) return;
     if (!editingMember.name.trim()) {
       setValidationError('성명을 입력해 주세요.');
@@ -602,7 +647,9 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       return;
     }
 
-    // 동일 슬롯에 동일 기간 2명 이상 등록 허용 (차단하지 않고 저장)
+    setIsSavingMember(true);
+
+    // 1. Update React state immediately
     if (isAddingNew) {
       setMembers((prev) => [...prev, editingMember]);
     } else {
@@ -611,19 +658,66 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       );
     }
 
+    // 2. Direct DB Save to Supabase (rotation_slots)
+    if (isSupabaseConfigured) {
+      try {
+        const res = await saveSingleRemoteSlot(
+          editingMember,
+          originalEditingMember?.slotNo,
+          originalEditingMember?.name
+        );
+        if (res.success) {
+          showNotification(
+            'success',
+            `[Slot ${editingMember.slotNo}] '${editingMember.name}' 님의 인원 정보가 공유 DB에 성공적으로 저장되었습니다.`
+          );
+        } else {
+          showNotification(
+            'error',
+            `로컬에는 반영되었으나 공유 DB 저장에 실패했습니다: ${res.error}`
+          );
+        }
+      } catch (err: any) {
+        showNotification('error', `공유 DB 저장 중 오류 발생: ${err.message}`);
+      }
+    } else {
+      showNotification(
+        'success',
+        `[Slot ${editingMember.slotNo}] '${editingMember.name}' 님의 인원 정보가 로컬에 저장되었습니다. (DB 미연결)`
+      );
+    }
+
+    setIsSavingMember(false);
     setEditingMember(null);
+    setOriginalEditingMember(null);
     setValidationError(null);
   };
 
-  const handleDeleteMember = (memberId: string) => {
+  const handleDeleteMember = async (memberId: string) => {
     const target = members.find((m) => m.id === memberId);
     if (!target) return;
     const confirmed = window.confirm(
-      `[${target.unit} Slot ${target.slotNo}] '${target.name}' 님의 근무 이력을 삭제하시겠습니까?`
+      `[${target.unit} Slot ${target.slotNo}] '${target.name}' 님의 근무 이력을 삭제하시겠습니까?\n(확인 시 공유 DB에서도 즉시 삭제됩니다)`
     );
     if (!confirmed) return;
 
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
+
+    if (isSupabaseConfigured) {
+      try {
+        const ok = await deleteRemoteSlot(target.slotNo, target.name);
+        if (ok) {
+          showNotification(
+            'success',
+            `[Slot ${target.slotNo}] '${target.name}' 님의 근무 이력이 공유 DB에서 삭제되었습니다.`
+          );
+        } else {
+          showNotification('error', '공유 DB 삭제에 실패했습니다.');
+        }
+      } catch (err: any) {
+        showNotification('error', `공유 DB 삭제 중 오류 발생: ${err.message}`);
+      }
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -1782,19 +1876,54 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
             <div className="pt-3 border-t flex justify-end space-x-2 text-xs">
               <button
-                onClick={() => setEditingMember(null)}
-                className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold"
+                type="button"
+                onClick={() => {
+                  setEditingMember(null);
+                  setOriginalEditingMember(null);
+                }}
+                disabled={isSavingMember}
+                className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold disabled:opacity-50"
               >
                 취소
               </button>
               <button
+                type="button"
                 onClick={handleSaveMember}
-                className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold shadow-sm"
+                disabled={isSavingMember}
+                className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold shadow-sm flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
               >
-                저장 반영
+                {isSavingMember ? (
+                  <>
+                    <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>DB 저장 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>저장 반영</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Database Operation Floating Toast */}
+      {dbNotification && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center space-x-2.5 px-4 py-3 rounded-xl shadow-2xl border text-xs sm:text-sm font-bold transition-all animate-in fade-in slide-in-from-bottom-2 duration-200 ${
+            dbNotification.type === 'success'
+              ? 'bg-slate-900/95 border-emerald-500/80 text-emerald-300 shadow-emerald-950/40'
+              : 'bg-slate-900/95 border-rose-500/80 text-rose-300 shadow-rose-950/40'
+          }`}
+        >
+          {dbNotification.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+          )}
+          <span>{dbNotification.message}</span>
         </div>
       )}
     </div>

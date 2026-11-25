@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+export { isSupabaseConfigured };
 import { ShiftCode, Holiday } from '../engine/types';
 import { SlotMemberData } from '../components/SlotMemberAdmin';
 import { HOLIDAYS_2026, HOLIDAYS_2027 } from '../engine/holidays';
@@ -130,7 +131,7 @@ export async function fetchRemoteSlots(): Promise<SlotMemberData[] | null> {
     if (error || !data || data.length === 0) return null;
 
     return data.map((r) => ({
-      id: `slot-${r.slot_no}-${r.work_start_date || 'default'}`,
+      id: `slot-${r.slot_no}-${r.member_name}-${r.work_start_date || 'default'}`,
       slotNo: r.slot_no,
       unit: r.unit as '3호기' | '4호기',
       name: r.member_name,
@@ -150,10 +151,10 @@ export async function fetchRemoteSlots(): Promise<SlotMemberData[] | null> {
 }
 
 /**
- * Save Slots & Member Configurations to DB
+ * Save Slots & Member Configurations to DB (All slots batch)
  */
-export async function saveRemoteSlots(slots: SlotMemberData[]): Promise<boolean> {
-  if (!isSupabaseConfigured) return false;
+export async function saveRemoteSlots(slots: SlotMemberData[]): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase가 설정되지 않았습니다.' };
 
   const rows = slots.map((s) => ({
     slot_no: s.slotNo,
@@ -172,7 +173,100 @@ export async function saveRemoteSlots(slots: SlotMemberData[]): Promise<boolean>
   try {
     const { error } = await supabase
       .from('rotation_slots')
-      .upsert(rows, { onConflict: 'slot_no,member_name,work_start_date' });
+      .upsert(rows, { onConflict: 'slot_no,member_name' });
+    if (error) {
+      console.error('saveRemoteSlots error:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Save or Update a single slot member immediately to DB
+ */
+export async function saveSingleRemoteSlot(
+  member: SlotMemberData,
+  originalSlotNo?: number,
+  originalName?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) {
+    return { success: false, error: 'Supabase가 설정되지 않았습니다.' };
+  }
+
+  try {
+    // If slotNo or member name was changed, delete the previous record first
+    if (
+      originalSlotNo &&
+      originalName &&
+      originalName.trim() &&
+      (originalSlotNo !== member.slotNo || originalName !== member.name)
+    ) {
+      await supabase
+        .from('rotation_slots')
+        .delete()
+        .eq('slot_no', originalSlotNo)
+        .eq('member_name', originalName);
+    }
+
+    const row = {
+      slot_no: member.slotNo,
+      unit: member.unit,
+      member_name: member.name,
+      phone: member.phone,
+      telegram_id: member.telegramId,
+      email: member.email,
+      work_start_date: member.workStartDate,
+      work_end_date: member.workEndDate || null,
+      termination_reason: member.terminationReason,
+      status: member.status,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('rotation_slots')
+      .upsert([row], { onConflict: 'slot_no,member_name' });
+
+    if (error) {
+      console.error('saveSingleRemoteSlot error:', error);
+      return { success: false, error: error.message };
+    }
+
+    await recordRemoteAuditLog(
+      'UPDATE_SLOT_MEMBER',
+      `[Slot ${member.slotNo}] ${member.name} 인원 정보 수정/저장 (${member.unit}, ${member.workStartDate}~${member.workEndDate || '9999-12-31'})`,
+      member.name
+    );
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Delete a single slot member from DB
+ */
+export async function deleteRemoteSlot(slotNo: number, memberName: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+
+  try {
+    const { error } = await supabase
+      .from('rotation_slots')
+      .delete()
+      .eq('slot_no', slotNo)
+      .eq('member_name', memberName);
+
+    if (!error) {
+      await recordRemoteAuditLog(
+        'DELETE_SLOT_MEMBER',
+        `[Slot ${slotNo}] ${memberName} 근무 이력 삭제`,
+        memberName
+      );
+    }
+
     return !error;
   } catch {
     return false;
@@ -265,9 +359,9 @@ export async function seedAllMasterDataToDb(
 
   try {
     // 1. Slots
-    const slotSuccess = await saveRemoteSlots(slots);
-    if (!slotSuccess) {
-      return { success: false, message: '슬롯 인원 데이터 저장에 실패했습니다.' };
+    const slotRes = await saveRemoteSlots(slots);
+    if (!slotRes.success) {
+      return { success: false, message: `슬롯 인원 데이터 저장에 실패했습니다: ${slotRes.error || ''}` };
     }
 
     // 2. Holidays (Save both 2026 and 2027 holidays)
@@ -278,31 +372,43 @@ export async function seedAllMasterDataToDb(
     }
 
     // 3. Scenarios (2026 Normal 9-person & 2027 8+1 Support mode)
-    await supabase.from('scenarios').upsert(
-      [
-        {
-          name: '2026년 9인 정상 운영 시나리오',
-          mode: 'NORMAL_9',
-          start_date: '2026-01-01',
-          end_date: '2026-12-31',
-          is_active: true,
-        },
-        {
-          name: '2027년 8+1 방안부 지원 및 9인 원복 시나리오',
-          mode: 'EIGHT_PLUS_DAYTIME',
-          start_date: '2027-01-01',
-          end_date: '2027-12-31',
-          vacant_slot_no: 1,
-          temp_cover_slot_no: 8,
-          support_name: '방안부지원',
-          support_department: '방사선안전부',
-          support_start_date: '2027-01-04',
-          support_end_date: '2027-03-07',
-          is_active: true,
-        },
-      ],
-      { onConflict: 'name' }
-    );
+    const scenarioList: Array<Record<string, any>> = [
+      {
+        name: '2026년 9인 정상 운영 시나리오',
+        mode: 'NORMAL_9',
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        vacant_slot_no: null,
+        temp_cover_slot_no: null,
+        support_name: null,
+        support_department: null,
+        support_start_date: null,
+        support_end_date: null,
+        is_active: true,
+      },
+      {
+        name: '2027년 8+1 방안부 지원 및 9인 원복 시나리오',
+        mode: 'EIGHT_PLUS_DAYTIME',
+        start_date: '2027-01-01',
+        end_date: '2027-12-31',
+        vacant_slot_no: 1,
+        temp_cover_slot_no: 8,
+        support_name: '방안부지원',
+        support_department: '방사선안전부',
+        support_start_date: '2027-01-04',
+        support_end_date: '2027-03-07',
+        is_active: true,
+      },
+    ];
+
+    for (const sc of scenarioList) {
+      const { data: existing } = await supabase.from('scenarios').select('id').eq('name', sc.name);
+      if (existing && existing.length > 0) {
+        await supabase.from('scenarios').update(sc as any).eq('id', existing[0].id);
+      } else {
+        await supabase.from('scenarios').insert(sc as any);
+      }
+    }
 
     // 4. Audit Log
     await recordRemoteAuditLog(
