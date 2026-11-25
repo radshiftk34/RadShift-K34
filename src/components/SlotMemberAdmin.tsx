@@ -114,14 +114,158 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
   const [targetDate, setTargetDate] = useState<string>(todayDateStr);
 
-  // Calculate 84-day cycle start & end based on targetDate
-  // Anchor = 2025-12-29 (Monday, d = 0)
+  // ---------------------------------------------------------------------------
+  // 2026/2027 공식 근무표 기준 84일 주기 및 호기 이동 정의
+  // ---------------------------------------------------------------------------
+  const OFFICIAL_CYCLES = useMemo(
+    () => [
+      // 2026년도 공식 근무표 기준 84일 주기 (시트 3 통상Day 순환일정 준용)
+      {
+        cycleNum: 1,
+        name: '제 1차 주기 (2026 초기 편성)',
+        startDate: '2025-12-29',
+        endDate: '2026-03-01',
+        movementNote: '12/29 초기 9인 체제 (송명관 ⑨ 통상 Day)',
+        unit3Members: ['박경욱', '임원택', '나상흠', '권재호'],
+        unit4Members: ['이근현', '신욱제', '송명관', '최창호', '손정기'],
+      },
+      {
+        cycleNum: 2,
+        name: '제 2차 84일 순환 주기',
+        startDate: '2026-03-02',
+        endDate: '2026-05-24',
+        movementNote: '3/2 손정기 4→3호기 이동 (84일 주기 적용)',
+        movedMemberName: '손정기',
+        unit3Members: ['손정기', '박경욱', '임원택', '나상흠', '권재호'],
+        unit4Members: ['이근현', '신욱제', '송명관', '최창호'],
+      },
+      {
+        cycleNum: 3,
+        name: '제 3차 84일 순환 주기',
+        startDate: '2026-05-25',
+        endDate: '2026-08-16',
+        movementNote: '5/25 권재호 3→4호기 이동 (84일 주기 적용)',
+        movedMemberName: '권재호',
+        unit3Members: ['손정기', '박경욱', '임원택', '나상흠'],
+        unit4Members: ['권재호', '이근현', '신욱제', '송명관', '최창호'],
+      },
+      {
+        cycleNum: 4,
+        name: '제 4차 84일 순환 주기',
+        startDate: '2026-08-17',
+        endDate: '2026-11-08',
+        movementNote: '8/17 최창호 4→3호기 이동 (84일 주기 적용)',
+        movedMemberName: '최창호',
+        unit3Members: ['최창호', '손정기', '박경욱', '임원택', '나상흠'],
+        unit4Members: ['권재호', '이근현', '신욱제', '송명관'],
+      },
+      {
+        cycleNum: 5,
+        name: '제 5차 84일 순환 주기',
+        startDate: '2026-11-09',
+        endDate: '2027-01-31',
+        movementNote: '11/9 나상흠 3→4호기 이동 (84일 주기 적용)',
+        movedMemberName: '나상흠',
+        unit3Members: ['최창호', '손정기', '박경욱', '임원택'],
+        unit4Members: ['나상흠', '권재호', '이근현', '신욱제', '송명관'],
+      },
+      // 2027년도 공식 근무표 기준 84일 주기
+      {
+        cycleNum: 1,
+        name: '제 1차 84일 주기 (2027 8+1 지원)',
+        startDate: '2027-01-01',
+        endDate: '2027-01-31',
+        movementNote: '1/1 신욱제 3호기(①위치) 대체 투입 (8+1 체제)',
+        movedMemberName: '신욱제',
+        unit3Members: ['신욱제', '손정기', '박경욱', '임원택'],
+        unit4Members: ['박상현', '권재호', '이근현', '송명관'],
+      },
+      {
+        cycleNum: 2,
+        name: '제 2차 84일 주기 (2027 8+1 호기이동)',
+        startDate: '2027-02-01',
+        endDate: '2027-03-21',
+        movementNote: '2/1 송명관 4→3·임원택 3→4호기 이동 (84일 주기 적용)',
+        movedMemberName: '송명관',
+        unit3Members: ['신욱제', '손정기', '송명관', '박경욱'],
+        unit4Members: ['임원택', '박상현', '권재호', '이근현'],
+      },
+      {
+        cycleNum: 3,
+        name: '제 3차 84일 순환 주기 (2027 9인 복원)',
+        startDate: '2027-03-22',
+        endDate: '2027-06-13',
+        movementNote: '3/22 신욱제 4→3호기 이동 (84일 주기 적용) & 이재겸 3호기 투입',
+        movedMemberName: '신욱제',
+        unit3Members: ['이재겸', '손정기', '박경욱', '신욱제'],
+        unit4Members: ['송명관', '임원택', '박상현', '권재호', '이근현'],
+      },
+      {
+        cycleNum: 4,
+        name: '제 4차 84일 순환 주기',
+        startDate: '2027-06-14',
+        endDate: '2027-09-05',
+        movementNote: '6/14 박경욱 3→4호기 이동 (84일 주기 적용)',
+        movedMemberName: '박경욱',
+        unit3Members: ['이재겸', '손정기', '신욱제', '송명관'],
+        unit4Members: ['박경욱', '임원택', '박상현', '권재호', '이근현'],
+      },
+      {
+        cycleNum: 5,
+        name: '제 5차 84일 순환 주기',
+        startDate: '2027-09-06',
+        endDate: '2027-11-28',
+        movementNote: '9/6 이근현 4→3호기 이동 (84일 주기 적용)',
+        movedMemberName: '이근현',
+        unit3Members: ['이근현', '이재겸', '손정기', '신욱제'],
+        unit4Members: ['송명관', '박경욱', '임원택', '박상현', '권재호'],
+      },
+      {
+        cycleNum: 6,
+        name: '제 6차 84일 순환 주기',
+        startDate: '2027-11-29',
+        endDate: '2028-02-20',
+        movementNote: '11/29 손정기 3→4호기 이동 (84일 주기 적용)',
+        movedMemberName: '손정기',
+        unit3Members: ['이근현', '이재겸', '신욱제', '송명관'],
+        unit4Members: ['손정기', '박경욱', '임원택', '박상현', '권재호'],
+      },
+    ],
+    []
+  );
+
+  // Calculate 84-day cycle start & end based on targetDate from official schedule
   const cycleInfo = useMemo(() => {
+    // 1. Check official cycle table first
+    const matched = OFFICIAL_CYCLES.find(
+      (c) => targetDate >= c.startDate && targetDate <= c.endDate
+    );
+
+    if (matched) {
+      const sDate = new Date(matched.startDate + 'T00:00:00Z');
+      const tDate = new Date(targetDate + 'T00:00:00Z');
+      const diffMs = tDate.getTime() - sDate.getTime();
+      const diffDays = Math.max(0, Math.floor(diffMs / 86400000));
+
+      return {
+        cycleNum: matched.cycleNum,
+        name: matched.name,
+        startDate: matched.startDate,
+        endDate: matched.endDate,
+        diffDays,
+        movementNote: matched.movementNote,
+        movedMemberName: matched.movedMemberName,
+        unit3Members: matched.unit3Members,
+        unit4Members: matched.unit4Members,
+      };
+    }
+
+    // 2. Generic fallback calculation for arbitrary dates
     const anchor = new Date('2025-12-29T00:00:00Z');
     const target = new Date(targetDate + 'T00:00:00Z');
     const diffMs = target.getTime() - anchor.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const cycleNum = Math.floor(diffDays / 84); // 0, 1, 2, ...
+    const diffDaysTotal = Math.floor(diffMs / 86400000);
+    const cycleNum = Math.floor(diffDaysTotal / 84);
     const startOffsetDays = cycleNum * 84;
     const endOffsetDays = startOffsetDays + 83;
 
@@ -133,13 +277,17 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
       .slice(0, 10);
 
     return {
-      cycleNum: cycleNum + 1, // 1차, 2차...
+      cycleNum: cycleNum + 1,
+      name: `제 ${cycleNum + 1}차 84일 순환 주기`,
       startDate,
       endDate,
-      diffDays,
-      shiftSteps: ((cycleNum % 9) + 9) % 9,
+      diffDays: ((diffDaysTotal % 84) + 84) % 84,
+      movementNote: '84일 주기 호기 순환',
+      movedMemberName: undefined,
+      unit3Members: ['최창호', '손정기', '박경욱', '임원택'],
+      unit4Members: ['나상흠', '권재호', '이근현', '신욱제', '송명관'],
     };
-  }, [targetDate]);
+  }, [targetDate, OFFICIAL_CYCLES]);
 
   // ---------------------------------------------------------------------------
   // 2. 슬롯 및 인원 관리 (기본 시작일 2026-01-01, 종료일 9999-12-31, 2026/2027 이력 포함)
@@ -327,107 +475,62 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     },
   ]);
 
-  // Active member for each slot at the selected targetDate
-  const activeSlotMembers = useMemo(() => {
-    const targetTime = new Date(targetDate).getTime();
-    const map: Record<
-      number,
-      {
-        member: SlotMemberData;
-        allActive: SlotMemberData[];
-        hasConflict: boolean;
-      }
-    > = {};
-
-    for (let slot = 1; slot <= 9; slot++) {
-      // Find all members whose range covers targetDate
-      const activeMems = members.filter((m) => {
-        if (m.slotNo !== slot) return false;
-        const start = new Date(m.workStartDate).getTime();
-        const end = new Date(m.workEndDate || '9999-12-31').getTime();
-        return targetTime >= start && targetTime <= end;
-      });
-
-      if (activeMems.length > 0) {
-        map[slot] = {
-          member: activeMems[0],
-          allActive: activeMems,
-          hasConflict: activeMems.length > 1,
-        };
-      } else {
-        // Fallback to first member of this slot or vacant placeholder
-        const anyMem = members.find((m) => m.slotNo === slot);
-        map[slot] = {
-          member: anyMem || {
-            id: `vacant_${slot}`,
-            slotNo: slot,
-            unit: slot <= 4 ? '3호기' : '4호기',
-            name: '(결원)',
-            phone: '-',
-            telegramId: '-',
-            email: '-',
-            workStartDate: targetDate,
-            workEndDate: '9999-12-31',
-            terminationReason: '해당 기간 인원 미배정',
-            status: '결원',
-            role: 'L1_VIEWER',
-            accountStatus: 'pending',
-          },
-          allActive: [],
-          hasConflict: false,
-        };
-      }
-    }
-    return map;
-  }, [members, targetDate]);
-
   // ---------------------------------------------------------------------------
-  // 84일 주기 우측 시프트(rotateRight)가 적용된 현재 기준일 원형 큐 슬롯 배정 목록 (1~9칸)
+  // 공식 근무표 기준 현재 기준일 원형 큐 슬롯 배정 목록 (1~9칸)
   // ---------------------------------------------------------------------------
   const rotatedQueueSlots = useMemo(() => {
-    const k = cycleInfo.shiftSteps; // 0 ~ 8
+    const rosterList = [
+      ...cycleInfo.unit3Members.map((name) => ({ name, unit: '3호기' as const })),
+      ...cycleInfo.unit4Members.map((name) => ({ name, unit: '4호기' as const })),
+    ];
 
-    return [1, 2, 3, 4, 5, 6, 7, 8, 9].map((displaySlotNo) => {
-      const displayIndex = displaySlotNo - 1; // 0 ~ 8
-      // 원본 슬롯 인덱스: (displayIndex - k + 9) % 9
-      const origIndex = ((displayIndex - k) % 9 + 9) % 9;
-      const origSlotNo = origIndex + 1; // 1 ~ 9
+    const targetTime = new Date(targetDate).getTime();
 
-      const is3U = displaySlotNo <= 4;
-      const slotData = activeSlotMembers[origSlotNo];
-      const activeMem = slotData?.member || {
-        id: `m-fallback-${origSlotNo}`,
-        slotNo: origSlotNo,
-        unit: origSlotNo <= 4 ? ('3호기' as const) : ('4호기' as const),
-        name: `Slot ${origSlotNo}`,
-        phone: '-',
-        telegramId: '-',
-        email: '-',
-        workStartDate: targetDate,
-        workEndDate: '9999-12-31',
-        terminationReason: '정상 근무',
-        status: '재직중' as const,
-        role: 'L2_HP' as const,
-        accountStatus: 'approved' as const,
-      };
-      const hasConflict = Boolean(slotData?.hasConflict);
+    return rosterList.map((item, idx) => {
+      const displaySlotNo = idx + 1; // S1 ~ S9
 
-      const memberDisplayName =
-        hasConflict && slotData?.allActive
-          ? slotData.allActive.map((m) => getDisplayName(origSlotNo, m.name)).join(' / ')
-          : getDisplayName(origSlotNo, activeMem.name);
+      // Find member in members state
+      const matchedMems = members.filter(
+        (m) =>
+          m.name === item.name &&
+          targetTime >= new Date(m.workStartDate).getTime() &&
+          targetTime <= new Date(m.workEndDate || '9999-12-31').getTime()
+      );
+
+      const activeMem =
+        matchedMems[0] ||
+        members.find((m) => m.name === item.name) || {
+          id: `m-slot-${displaySlotNo}`,
+          slotNo: displaySlotNo,
+          unit: item.unit,
+          name: item.name,
+          phone: '010-0000-0000',
+          telegramId: '@hp',
+          email: `${item.name}@khnp.co.kr`,
+          workStartDate: cycleInfo.startDate,
+          workEndDate: cycleInfo.endDate,
+          terminationReason: '84일 주기 공식 편성',
+          status: '재직중' as const,
+          role: 'L2_HP' as const,
+          accountStatus: 'approved' as const,
+        };
+
+      const hasConflict = matchedMems.length > 1;
+      const isMovedThisCycle = cycleInfo.movedMemberName === item.name;
+      const memberDisplayName = getDisplayName(displaySlotNo, activeMem.name);
 
       return {
         displaySlotNo, // 현재 화면상 슬롯 위치 (1~9)
-        displayUnit: is3U ? ('3호기' as const) : ('4호기' as const),
-        origSlotNo, // 원래 기준 슬롯 번호
+        displayUnit: item.unit,
+        origSlotNo: activeMem.slotNo,
         member: activeMem,
-        allActive: slotData?.allActive || [],
+        allActive: matchedMems,
         hasConflict,
+        isMovedThisCycle,
         memberDisplayName,
       };
     });
-  }, [cycleInfo.shiftSteps, activeSlotMembers, anonymize]);
+  }, [cycleInfo, members, targetDate, anonymize]);
 
   // Editing / Adding Slot Modal State
   const [editingMember, setEditingMember] = useState<SlotMemberData | null>(null);
@@ -810,8 +913,15 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     {cycleInfo.cycleNum}
                   </span>
                   <div>
-                    <div className="font-extrabold text-indigo-950 text-sm">
-                      제 {cycleInfo.cycleNum}차 84일 순환 주기 (원형 큐 우측 {cycleInfo.shiftSteps}칸 회전 적용)
+                    <div className="flex items-center space-x-2">
+                      <span className="font-extrabold text-indigo-950 text-sm">
+                        {cycleInfo.name}
+                      </span>
+                      {cycleInfo.movementNote && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                          {cycleInfo.movementNote}
+                        </span>
+                      )}
                     </div>
                     <div className="text-slate-600 font-medium mt-0.5">
                       기준일 <span className="font-bold text-indigo-700">{targetDate}</span> 가 포함되는 주기:
@@ -819,7 +929,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                         {cycleInfo.startDate} ~ {cycleInfo.endDate}
                       </span>
                       <span className="text-slate-400 ml-1">
-                        (주기 시작일로부터 +{cycleInfo.diffDays % 84}일차)
+                        (주기 시작일로부터 +{cycleInfo.diffDays}일차)
                       </span>
                     </div>
                   </div>
@@ -827,10 +937,10 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
 
                 <div className="flex items-center space-x-2 text-xs font-bold">
                   <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 border border-blue-200">
-                    S1~S4: 3호기 (4명)
+                    S1~S{cycleInfo.unit3Members.length}: 3호기 ({cycleInfo.unit3Members.length}명)
                   </span>
                   <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    S5~S9: 4호기 (5명)
+                    S{cycleInfo.unit3Members.length + 1}~S9: 4호기 ({cycleInfo.unit4Members.length}명)
                   </span>
                 </div>
               </div>
@@ -839,11 +949,11 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
               <div className="pt-2 border-t border-indigo-200/60 flex flex-wrap items-center gap-1.5 text-[11px]">
                 <span className="font-extrabold text-indigo-950">원형 큐 순환 배치:</span>
                 <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-900 font-bold">
-                  3호기: {rotatedQueueSlots.slice(0, 4).map((s) => s.member.name).join(' → ')}
+                  3호기: {cycleInfo.unit3Members.join(' → ')}
                 </span>
                 <span className="text-slate-400 font-bold">|</span>
                 <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold">
-                  4호기: {rotatedQueueSlots.slice(4).map((s) => s.member.name).join(' → ')}
+                  4호기: {cycleInfo.unit4Members.join(' → ')}
                 </span>
               </div>
             </div>
@@ -856,7 +966,6 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                 const activeMem = slotItem.member;
                 const hasConflict = slotItem.hasConflict;
                 const displayName = slotItem.memberDisplayName;
-                const origSlotNo = slotItem.origSlotNo;
 
                 return (
                   <div
@@ -876,12 +985,12 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                         >
                           S{displaySlotNo}
                         </span>
-                        {origSlotNo !== displaySlotNo && (
+                        {slotItem.isMovedThisCycle && (
                           <span
-                            className="text-[9px] font-mono font-bold px-1 rounded bg-slate-200 text-slate-700"
-                            title={`원 순번: Slot ${origSlotNo}`}
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-400 text-slate-900 shadow-xs"
+                            title={`이번 84일 주기에 호기 이동된 근무자`}
                           >
-                            원S{origSlotNo}
+                            호기이동
                           </span>
                         )}
                       </div>
@@ -1026,14 +1135,20 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                             >
                               Slot {m.slotNo}
                             </span>
-                            {cycleInfo.shiftSteps > 0 && (
-                              <div
-                                className="text-[10px] text-indigo-700 font-bold mt-0.5 whitespace-nowrap"
-                                title={`선택 기준일(${targetDate}) 84일 시프트 배정 위치`}
-                              >
-                                ↳ 기준일: S{((m.slotNo - 1 + cycleInfo.shiftSteps) % 9) + 1}
-                              </div>
-                            )}
+                            {(() => {
+                              const assigned = rotatedQueueSlots.find((s) => s.member.name === m.name);
+                              if (assigned) {
+                                return (
+                                  <div
+                                    className="text-[10px] text-indigo-700 font-bold mt-0.5 whitespace-nowrap"
+                                    title={`선택 기준일(${targetDate}) 84일 주기 배정 위치`}
+                                  >
+                                    ↳ 기준일: S{assigned.displaySlotNo} ({assigned.displayUnit})
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </td>
                           <td className="px-3 py-2.5 text-center font-bold">
                             {m.unit}
