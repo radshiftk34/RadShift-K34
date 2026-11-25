@@ -1,12 +1,24 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.2",
   "releaseDate": "2026-11-25",
-  "buildNumber": 5,
+  "buildNumber": 7,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.4.2",
+      "date": "2026-11-25",
+      "build": 7,
+      "title": "84일 주기 기준일 연동, 슬롯 기간 중복검증, 8+1 백업 자동선정 및 공유 DB 권한 스크립트",
+      "notes": [
+        "기준일 선택 시 84일 주기 시작일/종료일/회차 실시간 계산 및 원형 큐 슬롯 이름 자동 연동",
+        "근무기간 기본값(2026-01-01 ~ 9999-12-31) 설정 및 동일 슬롯 번호 내 기간 중복 방지/승계 등록 검증 로직 구현",
+        "8+1 결원 백업인원 자동선정(반대편 호기 마지막 통상 교대인원) 및 관리자 수동 변경, 9인 복귀 시 슬롯 원복 및 일요일 통상 마무리 불변식 구현",
+        "Supabase PostgreSQL 테이블 및 시퀀스 GRANT ALL 권한 스크립트 보강 및 1-클릭 공유 DB 시드 업로드 연동"
+      ]
+    },
     {
       "version": "1.4.0",
       "date": "2026-11-25",
