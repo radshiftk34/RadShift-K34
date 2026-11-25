@@ -59,13 +59,6 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
     return 1;
   });
 
-  // When year changes, auto-switch to today's month if viewing current year
-  useEffect(() => {
-    if (year === todayYear) {
-      setSelectedMonth(todayMonth);
-    }
-  }, [year, todayYear, todayMonth]);
-
   // Ref to today's column header to auto-scroll into center view on load
   const todayHeaderRef = useRef<HTMLTableCellElement>(null);
   useEffect(() => {
@@ -168,7 +161,16 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
     if ((year === 2026 || year === 2027) && masterMonth) {
       // 2026 / 2027: Use official 84-day circular queue rows from Excel
       return masterMonth.members.map((mem, memIdx) => {
-        const u = mem.unit === '3' ? '3호기' : mem.unit === '4' ? '4호기' : '지원';
+        let u: '3호기' | '4호기' | '지원' = mem.unit === '3' ? '3호기' : '4호기';
+        if (mem.unit === '지원' || mem.name.includes('지원')) {
+          u = '지원';
+        }
+        // 고리 3,4호기 원형 큐: 1~4슬롯 3호기, 5~9슬롯 4호기.
+        // 송명관 요원(S9 슬롯)은 항상 4호기로 표시 (통상이 아닌 4호기 고정 소속)
+        if (mem.name === '송명관') {
+          u = '4호기';
+        }
+
         const shifts = mem.shifts.map((baseCode, dIdx) => {
           const dayNum = masterMonth.days[dIdx];
           const dateStr = `${year}-${monthStr}-${String(dayNum).padStart(2, '0')}`;
@@ -187,6 +189,22 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
           };
         });
 
+        // Determine slotNo for member
+        let memberSlotNo: number | undefined = undefined;
+        for (const s of shifts) {
+          if (s.slotNo) {
+            memberSlotNo = s.slotNo;
+            break;
+          }
+        }
+        if (!memberSlotNo) {
+          const found = monthDays[0]?.shifts.find((s) => s.memberName === mem.name);
+          memberSlotNo = found?.slotNo;
+        }
+        if (!memberSlotNo && mem.name === '송명관') {
+          memberSlotNo = 9;
+        }
+
         let dCount = 0, aCount = 0, nCount = 0;
         for (const s of shifts) {
           if (['D', '3D', '4D', '3D*', '4D*', '일근'].includes(s.code)) dCount++;
@@ -199,6 +217,7 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
           unit: u,
           unitLabel: u,
           name: mem.name,
+          slotNo: memberSlotNo,
           shifts,
           dCount,
           aCount,
@@ -219,7 +238,7 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
       { slotNo: 8, name: '신욱제', unit: '4호기' as const },
       { slotNo: 1, name: '최창호', unit: '4호기' as const },
       { slotNo: 2, name: '손정기', unit: '4호기' as const },
-      { slotNo: 9, name: '송명관', unit: '지원' as const, label: '통상' },
+      { slotNo: 9, name: '송명관', unit: '4호기' as const, label: '4호기' },
     ];
 
     for (const m of members2026) {
@@ -276,6 +295,36 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
     return dynamicRows;
   }, [dynamicRows, unitFilter]);
 
+  const isMonthConfigured = useMemo(() => {
+    if (monthDays.length === 0 || dynamicRows.length === 0) return false;
+    // Check if at least one member has a valid non-empty shift
+    const hasAnyShift = dynamicRows.some((r) =>
+      r.shifts.some((s) => s.code && s.code.trim() !== '' && s.code !== '-')
+    );
+    return hasAnyShift;
+  }, [monthDays, dynamicRows]);
+
+  const handlePrevMonth = () => {
+    if (selectedMonth > 1) {
+      setSelectedMonth((m) => m - 1);
+    } else if (year > 2026 && onYearChange) {
+      onYearChange(year - 1);
+      setSelectedMonth(12);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth < 12) {
+      setSelectedMonth((m) => m + 1);
+    } else if (year < 2027 && onYearChange) {
+      onYearChange(year + 1);
+      setSelectedMonth(1);
+    }
+  };
+
+  const canGoPrev = selectedMonth > 1 || (year > 2026 && Boolean(onYearChange));
+  const canGoNext = selectedMonth < 12 || (year < 2027 && Boolean(onYearChange));
+
   return (
     <div className="space-y-4">
       {/* 1. Month Navigation & Controls Bar */}
@@ -283,10 +332,10 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
         {/* Left: Month Nav & Jump to Today */}
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setSelectedMonth((m) => Math.max(1, m - 1))}
-            disabled={selectedMonth === 1}
+            onClick={handlePrevMonth}
+            disabled={!canGoPrev}
             className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-            title="이전 달"
+            title={selectedMonth === 1 && year > 2026 ? `${year - 1}년 12월로 이동` : '이전 달'}
           >
             <ChevronLeft className="w-4 h-4 text-slate-600" />
           </button>
@@ -296,10 +345,10 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
           </span>
 
           <button
-            onClick={() => setSelectedMonth((m) => Math.min(12, m + 1))}
-            disabled={selectedMonth === 12}
+            onClick={handleNextMonth}
+            disabled={!canGoNext}
             className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-            title="다음 달"
+            title={selectedMonth === 12 && year < 2027 ? `${year + 1}년 1월로 이동` : '다음 달'}
           >
             <ChevronRight className="w-4 h-4 text-slate-600" />
           </button>
@@ -426,7 +475,23 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
       </div>
 
       {/* 2. Dynamic Monthly Schedule Grid */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      {!isMonthConfigured ? (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-10 text-center space-y-3 my-4 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-extrabold text-amber-950">
+            근무자 설정 미완료 안내
+          </h3>
+          <p className="text-sm font-bold text-amber-800">
+            해당 월 또는 해당 년도는 근무자 설정이 완료되지 않았습니다. 관리자에게 근무자 설정 완료를 요청해주세요
+          </p>
+          <p className="text-xs text-amber-600">
+            [인원·근무 관리] 메뉴에서 슬롯별 근무 인원 배정 및 84일 교대 순환 설정을 완료해야 근무표가 정상적으로 표시됩니다.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full text-xs divide-y divide-slate-200 border-collapse">
             <thead>
@@ -596,6 +661,7 @@ export const MonthlyMatrix: React.FC<MonthlyMatrixProps> = ({
           </table>
         </div>
       </div>
+      )}
 
       {/* 3. Operational Remarks for the Month (from Excel) */}
       {masterMonth?.remark && (
