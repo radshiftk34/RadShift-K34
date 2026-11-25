@@ -1,12 +1,24 @@
 {
-  "version": "1.5.9",
+  "version": "1.5.10",
   "releaseDate": "2026-11-26",
-  "buildNumber": 21,
+  "buildNumber": 22,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.10",
+      "date": "2026-11-26",
+      "build": 22,
+      "title": "L2 방안부 사용자 권한 신설 및 방안부 일근 지원표 수정 권한 부여",
+      "notes": [
+        "시스템 사용자 레벨에 'L2 방안부(L2_BANGAN)' 권한 추가",
+        "L2 방안부 사용자에게 8+1 방안부 일근 교대지원 근무표 수정 권한(근무가능자 풀 추가/삭제, 평일 순번 매핑, 자동 배정, 기간 설정) 부여",
+        "상단 네비게이션 권한 전환 버튼('L2 방안부') 및 인증 로그인 모달에 L2 방안부 역할 선택기 추가",
+        "방안부 지원표 상단 배너에 실시간 권한 안내 뱃지(수정 권한 활성 / 조회 전용) 표출"
+      ]
+    },
     {
       "version": "1.5.9",
       "date": "2026-11-26",

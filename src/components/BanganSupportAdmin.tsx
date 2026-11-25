@@ -50,8 +50,8 @@ export const BanganSupportAdmin: React.FC<BanganSupportAdminProps> = ({
   // 4. Feedback / Saved status
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
-  // Read-only or editable based on role
-  const isEditable = currentRole === 'L3_ADMIN';
+  // Read-only or editable based on role (L3_ADMIN 및 L2_BANGAN 수정 권한 부여)
+  const isEditable = currentRole === 'L3_ADMIN' || currentRole === 'L2_BANGAN';
 
   // Compute workday list based on config and schedule
   const workdayList: BanganDayAssignment[] = useMemo(() => {
@@ -221,6 +221,15 @@ export const BanganSupportAdmin: React.FC<BanganSupportAdminProps> = ({
                 <span className="px-2 py-0.5 rounded-full text-xs font-black bg-purple-100 text-purple-800">
                   8+1 지원 체제
                 </span>
+                {isEditable ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    수정 권한 활성 ({currentRole === 'L3_ADMIN' ? 'L3 관리자' : 'L2 방안부'})
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                    조회 전용 (수정 권한: L3 관리자 / L2 방안부)
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 결원(김대호 임피 등) 발생 시 방사선안전부(방안부) 직원의 주간(Day) 교대근무 지원 일정 및 순번을 관리합니다.

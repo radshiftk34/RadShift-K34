@@ -14,7 +14,7 @@ export const isSupabaseConfigured = Boolean(
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export type UserRole = 'L1_VIEWER' | 'L2_HP' | 'L3_ADMIN';
+export type UserRole = 'L1_VIEWER' | 'L2_HP' | 'L2_BANGAN' | 'L3_ADMIN';
 
 export interface UserProfile {
   id: string;

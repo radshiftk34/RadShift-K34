@@ -33,7 +33,7 @@ create table public.profiles (
   alias_code text not null default 'HP-00', -- HP-01 ~ HP-09 (익명화 모드)
   phone text,
   telegram_id text,
-  role text not null check (role in ('L1_VIEWER', 'L2_HP', 'L3_ADMIN')) default 'L1_VIEWER',
+  role text not null check (role in ('L1_VIEWER', 'L2_HP', 'L2_BANGAN', 'L3_ADMIN')) default 'L1_VIEWER',
   status text not null check (status in ('pending', 'approved', 'rejected')) default 'approved',
   slot_no int check (slot_no between 1 and 9),
   created_at timestamptz not null default now(),

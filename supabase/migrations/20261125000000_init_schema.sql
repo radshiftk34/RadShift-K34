@@ -12,7 +12,7 @@ create table if not exists public.profiles (
   email text not null,
   display_name text not null,
   alias_code text not null default 'HP-00', -- HP-01 ~ HP-09 for anonymization
-  role text not null check (role in ('L1_VIEWER', 'L2_HP', 'L3_ADMIN')) default 'L1_VIEWER',
+  role text not null check (role in ('L1_VIEWER', 'L2_HP', 'L2_BANGAN', 'L3_ADMIN')) default 'L1_VIEWER',
   status text not null check (status in ('pending', 'approved', 'rejected')) default 'pending',
   slot_no int check (slot_no between 1 and 9),
   telegram_user_id bigint unique,

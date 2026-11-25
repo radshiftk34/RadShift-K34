@@ -24,7 +24,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className="flex items-center space-x-2 text-xs">
         <span className="text-slate-500 font-medium">로그인 계정:</span>
         <span className="font-bold text-slate-900">
-          {currentRole === 'L3_ADMIN' ? '관리자 (L3)' : currentRole === 'L2_HP' ? 'HP 근무자 (L2)' : '일반 조회자 (L1)'}
+          {currentRole === 'L3_ADMIN'
+            ? '관리자 (L3)'
+            : currentRole === 'L2_BANGAN'
+            ? '방안부 담당자 (L2)'
+            : currentRole === 'L2_HP'
+            ? 'HP 근무자 (L2)'
+            : '일반 조회자 (L1)'}
         </span>
         <button
           onClick={onLogout}
@@ -52,10 +58,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Quick Role Selection for Demo & Evaluation */}
         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
           <span className="text-xs font-bold text-slate-700 block">체험할 권한 선택:</span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
               { role: 'L1_VIEWER', label: 'L1 뷰어', desc: '조회 전용' },
               { role: 'L2_HP', label: 'L2 HP', desc: '휴가/대근' },
+              { role: 'L2_BANGAN', label: 'L2 방안부', desc: '일근지원표' },
               { role: 'L3_ADMIN', label: 'L3 관리자', desc: '전체 편집' },
             ].map((item) => (
               <button

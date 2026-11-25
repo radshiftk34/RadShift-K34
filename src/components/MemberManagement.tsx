@@ -218,11 +218,18 @@ export const MemberManagement: React.FC<MemberManagementProps> = ({
                       >
                         <option value="L1_VIEWER">L1 뷰어</option>
                         <option value="L2_HP">L2 HP 근무자</option>
+                        <option value="L2_BANGAN">L2 방안부 담당자</option>
                         <option value="L3_ADMIN">L3 총괄관리자</option>
                       </select>
                     ) : (
                       <span className="font-semibold text-slate-700">
-                        {m.role === 'L3_ADMIN' ? 'L3 총괄관리자' : m.role === 'L2_HP' ? 'L2 HP 근무자' : 'L1 뷰어'}
+                        {m.role === 'L3_ADMIN'
+                          ? 'L3 총괄관리자'
+                          : m.role === 'L2_BANGAN'
+                          ? 'L2 방안부 담당자'
+                          : m.role === 'L2_HP'
+                          ? 'L2 HP 근무자'
+                          : 'L1 뷰어'}
                       </span>
                     )}
                   </td>

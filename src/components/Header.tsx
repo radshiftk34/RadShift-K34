@@ -134,9 +134,15 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-slate-500 text-[10px] uppercase font-bold px-1.5 hidden lg:inline">
                 권한:
               </span>
-              {(['L1_VIEWER', 'L2_HP', 'L3_ADMIN'] as UserRole[]).map((r) => {
+              {(['L1_VIEWER', 'L2_HP', 'L2_BANGAN', 'L3_ADMIN'] as UserRole[]).map((r) => {
                 const label =
-                  r === 'L1_VIEWER' ? 'L1 뷰어' : r === 'L2_HP' ? 'L2 HP' : 'L3 관리자';
+                  r === 'L1_VIEWER'
+                    ? 'L1 뷰어'
+                    : r === 'L2_HP'
+                    ? 'L2 HP'
+                    : r === 'L2_BANGAN'
+                    ? 'L2 방안부'
+                    : 'L3 관리자';
                 const isActive = currentRole === r;
                 return (
                   <button
@@ -145,6 +151,8 @@ export const Header: React.FC<HeaderProps> = ({
                     className={`px-2 py-1 rounded-md transition-all font-medium ${isActive
                       ? r === 'L3_ADMIN'
                         ? 'bg-purple-600 text-white shadow-sm font-semibold'
+                        : r === 'L2_BANGAN'
+                        ? 'bg-indigo-600 text-white shadow-sm font-semibold'
                         : 'bg-brand-600 text-white shadow-sm font-semibold'
                       : 'text-slate-600 hover:text-slate-900'
                       }`}
