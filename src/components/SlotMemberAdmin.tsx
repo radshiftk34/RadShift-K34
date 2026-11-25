@@ -1022,12 +1022,13 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     </div>
 
                     <div className="mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
-                      <span
-                        className={`font-medium truncate max-w-[65px] ${hasConflict ? 'text-rose-700 font-bold' : 'text-slate-400'
-                          }`}
-                      >
-                        {hasConflict ? '수정필요' : activeMem.status}
-                      </span>
+                      {hasConflict ? (
+                        <span className="font-bold text-rose-700 truncate max-w-[70px]">
+                          수정필요
+                        </span>
+                      ) : (
+                        <span />
+                      )}
                       <button
                         onClick={() => handleOpenEditMember(activeMem)}
                         className="text-brand-600 hover:text-brand-800 font-bold"
@@ -1098,7 +1099,6 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     <th className="px-3 py-2.5 text-left min-w-[280px]">
                       비고 (근무 사유 및 기간 중복 안내)
                     </th>
-                    <th className="px-3 py-2.5 text-center">상태</th>
                     <th className="px-3 py-2.5 text-center w-24">관리</th>
                   </tr>
                 </thead>
@@ -1215,18 +1215,6 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                                 {m.terminationReason || '정상 근무'}
                               </span>
                             )}
-                          </td>
-                          <td className="px-3 py-2.5 text-center">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.status === '재직중'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : m.status === '임금피크'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-slate-100 text-slate-600'
-                                }`}
-                            >
-                              {m.status}
-                            </span>
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <div className="flex items-center justify-center space-x-1">

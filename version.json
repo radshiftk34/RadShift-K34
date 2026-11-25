@@ -1,12 +1,23 @@
 {
-  "version": "1.5.6",
+  "version": "1.5.7",
   "releaseDate": "2026-11-26",
-  "buildNumber": 18,
+  "buildNumber": 19,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.5.7",
+      "date": "2026-11-26",
+      "build": 19,
+      "title": "슬롯별 HP 인원 및 근무 이력 관리의 '상태' 컬럼 및 항목 삭제",
+      "notes": [
+        "슬롯별 HP 인원 및 근무 이력 관리 테이블에서 사용자에게 혼선을 주던 '상태(재직중, 교체완료, 퇴직 등)' 컬럼 삭제",
+        "상단 1~9 슬롯 카드 하단에 노출되던 불필요한 상태 텍스트 제거 및 기간 중복 배정 시 '수정필요' 경고만 명확하게 표시",
+        "인원 이력 목록의 가독성 향상 및 비고(근무 사유 및 기간 중복 안내) 내용 중심 정돈"
+      ]
+    },
     {
       "version": "1.5.6",
       "date": "2026-11-26",
