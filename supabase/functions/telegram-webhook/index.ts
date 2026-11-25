@@ -136,7 +136,7 @@ serve(async (req) => {
         {
           inline_keyboard: [
             [{ text: '📅 내일 근무 사전안내', callback_data: '/내일' }],
-            [{ text: '🌐 웹앱 열기', url: 'https://radshift.github.io/RadShift_K34/' }],
+            [{ text: '🌐 웹앱 열기', url: 'https://radshiftk34.github.io/RadShift-K34/' }],
           ],
         }
       );

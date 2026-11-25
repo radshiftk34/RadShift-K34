@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "releaseDate": "2026-11-25",
+  "buildNumber": 1,
+  "appName": "RadShift_K34",
+  "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
+  "repository": "https://github.com/radshiftk34/RadShift-K34",
+  "gitCommit": "2e35486",
+  "updates": [
+    {
+      "version": "1.0.0",
+      "date": "2026-11-25",
+      "type": "major",
+      "title": "초기 정식 릴리즈 (2026년 9인 정상 체제 및 2027년 8+1 지원 시나리오 무결점 엔진)",
+      "highlights": [
+        "2026년 365일 및 2027년 365일 전수 검증 통과 (커버리지 오류 0건, 최대 연속근무 <= 3일, 역순환 0건)",
+        "고정 9슬롯 및 근무표 행 불변 원칙을 준수하는 결정론적 교대근무 엔진 (src/engine/shiftEngine.ts)",
+        "2027년 대한민국 법정공휴일 및 대체공휴일 24일 DB 전수 탑재",
+        "Supabase PostgreSQL 테이블 8종 및 Row Level Security (RLS) 보안 정책 구축",
+        "반응형 웹앱 (오늘/내일 대시보드, 2-Layer 월간 매트릭스 편집기, 휴가/대근 신청 & Top 3 자동 추천, 2026 vs 2027 비교표)",
+        "텔레그램 양방향 연동 봇 Edge Functions 및 GitHub Actions 배포 파이프라인 구축",
+        "원본 양식 엑셀(.xlsx) 시트 3종 및 개인별 스마트폰 캘린더(.ics) 내보내기 지원"
+      ],
+      "changes": {
+        "added": [
+          "결정론적 교대근무 엔진 (21일 통상 순환 및 84일 호기 이동 알고리즘)",
+          "2027년 8+1 방안부 일근지원 및 9인 원복 시나리오 처리 로직",
+          "Supabase 마이그레이션 SQL (profiles, rotation_slots, scenarios, holidays, leave_relief_requests, shift_overrides, credit_ledger, audit_logs)",
+          "PC/모바일 반응형 웹 UI 및 관리자 원클릭 2-Layer 수정 기능",
+          "대근자 자동 추천 알고리즘 (Phase-11 우선, 동일호기 우선 점수제)",
+          "텔레그램 봇 웹훅 및 일일 오전 07:00 브리핑 크론 Edge Functions",
+          "GitHub Actions 기반 GitHub Pages 자동 배포 CI/CD 파이프라인"
+        ],
+        "fixed": [],
+        "security": [
+          "Public GitHub 배포를 고려한 소스코드 내 실명/토큰/ServiceKey 하드코딩 배제",
+          "Supabase Auth 관리자 승인제(RBAC) 및 DB 레벨 RLS 정책 적용",
+          "실명 <-> HP-01~HP-09 익명화 모드 토글 지원"
+        ]
+      }
+    }
+  ]
+}

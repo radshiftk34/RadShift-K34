@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/RadShift_K34/',
+  base: '/RadShift-K34/',
   test: {
     globals: true,
     environment: 'node',

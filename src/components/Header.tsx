@@ -12,6 +12,7 @@ interface HeaderProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onExportExcel: () => void;
+  onOpenVersionModal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onTabChange,
   onExportExcel,
+  onOpenVersionModal,
 }) => {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
@@ -38,6 +40,13 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-slate-900 tracking-tight text-lg">RadShift_K34</span>
+                <button
+                  onClick={onOpenVersionModal}
+                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-colors"
+                  title="버전 정보 및 업데이트 내역 보기"
+                >
+                  v1.0.0
+                </button>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
                   {year === 2026 ? '2026 정상 9인' : '2027 8+1 지원'}
                 </span>

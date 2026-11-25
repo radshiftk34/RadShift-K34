@@ -9,6 +9,7 @@ import { LeaveReliefModal } from './components/LeaveReliefModal';
 import { ScenarioSimulator } from './components/ScenarioSimulator';
 import { TelegramBotSimulator } from './components/TelegramBotSimulator';
 import { AuthModal } from './components/AuthModal';
+import { VersionModal } from './components/VersionModal';
 import { exportScheduleToExcel } from './utils/excelExport';
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true); // Pre-authenticated for review
   const [anonymize, setAnonymize] = useState<boolean>(false);
   const [overrides, setOverrides] = useState<Record<string, ShiftCode>>({});
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState<boolean>(false);
 
   const activeSchedule = year === 2026 ? schedule2026 : schedule2027;
 
@@ -74,6 +76,7 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onExportExcel={handleExportExcel}
+        onOpenVersionModal={() => setIsVersionModalOpen(true)}
       />
 
       {/* Main Body */}
@@ -128,7 +131,18 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
           <div>
             <span className="font-semibold text-slate-700">RadShift_K34</span> | 한국수력원자력 고리 3,4호기 HP 교대근무 관리 시스템
-          </div>
+            <button
+              onClick={() => setIsVersionModalOpen(true)}
+              className="ml-2 text-brand-600 hover:text-brand-800 underline font-semibold"
+            >
+              버전 v1.0.0 (업데이트 내역)
+            </button>
+            {/* Version Modal */}
+      <VersionModal
+        isOpen={isVersionModalOpen}
+        onClose={() => setIsVersionModalOpen(false)}
+      />
+    </div>
           <div className="flex items-center space-x-4">
             <AuthModal
               currentRole={currentRole}
@@ -142,6 +156,12 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Version Modal */}
+      <VersionModal
+        isOpen={isVersionModalOpen}
+        onClose={() => setIsVersionModalOpen(false)}
+      />
     </div>
   );
 }
