@@ -1,12 +1,26 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "releaseDate": "2026-11-25",
-  "buildNumber": 3,
+  "buildNumber": 4,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
-  "gitCommit": "2944ed6",
+  "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.3.0",
+      "date": "2026-11-25",
+      "build": 4,
+      "title": "공식 엑셀 양식 연간 근무표 및 84일 주기 동적 슬롯·호기 UI 탑재",
+      "notes": [
+        "[신규] 업로드 엑셀 원본 양식 100% 일치 연간 근무표(Annual Schedule View) 컴포넌트 탑재",
+        "[개선] 기본 랜딩 메인 페이지를 월간 근무표(matrix)로 변경 및 '오늘(Today)' 하이라이트/즉시 이동 버튼 구현",
+        "[개선] 고정 9슬롯 대신 84일 주기 3호기/4호기/지원조 동적 슬롯 그룹화 및 이름 앞 [호기] 구분 배지 표시",
+        "[신규] 월간 운영 특이사항(비 고) 및 하단 비교표 3종(2026 vs 2027 비교표, 8+1 크레딧 정산표, 15회차 타임라인) 연동",
+        "[개선] 엑셀(.xlsx) 내보내기 시 공식 4개 시트 원본 양식 다운로드 지원"
+      ],
+      "breaking": false
+    },
     {
       "version": "1.2.0",
       "date": "2026-11-25",

@@ -101,7 +101,7 @@ export const VersionModal: React.FC<VersionModalProps> = ({ isOpen, onClose }) =
 
               {/* Highlights */}
               <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                {update.highlights.map((h, i) => (
+                {((update as any).highlights || (update as any).notes || []).map((h: string, i: number) => (
                   <div key={i} className="text-xs text-slate-600 flex items-start space-x-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></span>
                     <span>{h}</span>

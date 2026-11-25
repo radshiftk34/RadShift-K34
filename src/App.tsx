@@ -5,6 +5,7 @@ import { UserRole } from './services/supabaseClient';
 import { Header } from './components/Header';
 import { TodayDashboard } from './components/TodayDashboard';
 import { MonthlyMatrix } from './components/MonthlyMatrix';
+import { AnnualScheduleView } from './components/AnnualScheduleView';
 import { LeaveReliefModal } from './components/LeaveReliefModal';
 import { ScenarioSimulator } from './components/ScenarioSimulator';
 import { TelegramBotSimulator } from './components/TelegramBotSimulator';
@@ -23,7 +24,7 @@ export default function App() {
 
   // UI State
   const [year, setYear] = useState<number>(2027);
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>('matrix');
   const [currentRole, setCurrentRole] = useState<UserRole>('L3_ADMIN');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true); // Pre-authenticated for review
   const [anonymize, setAnonymize] = useState<boolean>(false);
@@ -83,14 +84,6 @@ export default function App() {
 
       {/* Main Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === 'dashboard' && (
-          <TodayDashboard
-            schedule={activeSchedule}
-            anonymize={anonymize}
-            year={year}
-          />
-        )}
-
         {activeTab === 'matrix' && (
           <MonthlyMatrix
             schedule={activeSchedule}
@@ -100,6 +93,23 @@ export default function App() {
             overrides={overrides}
             onApplyOverride={handleApplyOverride}
             onResetOverrides={handleResetOverrides}
+            onYearChange={setYear}
+            onOpenAnnualView={() => setActiveTab('annual')}
+          />
+        )}
+
+        {activeTab === 'annual' && (
+          <AnnualScheduleView
+            anonymize={anonymize}
+            onExportExcel={handleExportExcel}
+          />
+        )}
+
+        {activeTab === 'dashboard' && (
+          <TodayDashboard
+            schedule={activeSchedule}
+            anonymize={anonymize}
+            year={year}
           />
         )}
 

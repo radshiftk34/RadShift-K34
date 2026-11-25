@@ -35,7 +35,8 @@ try {
             }
         }
     }
-} catch {
+}
+catch {
     # NetTCPConnection 실패 시 netstat 대안 검색
     $netstatOut = netstat -ano | Select-String ":$port\s+.*LISTENING"
     if ($netstatOut) {
@@ -54,7 +55,8 @@ try {
 if ($killed) {
     Start-Sleep -Milliseconds 1200
     Write-Host "  -> 기존 서비스가 성공적으로 종료되었습니다." -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "  -> 실행 중인 기존 서비스가 없습니다. 포트 $port 사용 가능." -ForegroundColor Green
 }
 

@@ -11,6 +11,7 @@ import {
   Sliders,
   Cpu,
   RotateCw,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -58,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors"
                   title="버전 정보 및 업데이트 내역 보기"
                 >
-                  v1.1.0
+                  v1.3.0
                 </button>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
                   {year === 2026 ? '2026 정상 9인' : '2027 8+1 지원'}
@@ -157,8 +158,9 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Tab Navigation */}
         <nav className="flex space-x-1 sm:space-x-3 border-t border-slate-100 overflow-x-auto py-2">
           {[
+            { id: 'matrix', label: '월간 근무표', icon: Sliders, badge: '메인' },
+            { id: 'annual', label: '연간 근무표 (엑셀 양식)', icon: FileSpreadsheet, badge: '공식 양식' },
             { id: 'dashboard', label: '오늘/내일 대시보드', icon: Calendar },
-            { id: 'matrix', label: '월간 근무표 (2-Layer)', icon: Sliders },
             { id: 'leave', label: '휴가·대근 관리', icon: Users, badge: 'Top 3' },
             { id: 'scenario', label: '시뮬레이터 (원형 큐)', icon: RotateCw },
             { id: 'telegram', label: '텔레그램 봇 연동', icon: Bot },
