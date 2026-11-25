@@ -14,6 +14,7 @@ import {
   RotateCw,
   FileSpreadsheet,
   Database,
+  CalendarCheck,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -82,11 +83,10 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Anonymize Toggle */}
             <button
               onClick={onToggleAnonymize}
-              className={`p-2 rounded-lg text-xs font-medium border flex items-center space-x-1 transition-colors ${
-                anonymize
-                  ? 'bg-purple-50 text-purple-700 border-purple-200'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
+              className={`p-2 rounded-lg text-xs font-medium border flex items-center space-x-1 transition-colors ${anonymize
+                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
               title={anonymize ? '실명으로 보기' : '슬롯코드로 익명화 보기'}
             >
               {anonymize ? (
@@ -103,11 +103,10 @@ export const Header: React.FC<HeaderProps> = ({
             {onOpenDbModal && (
               <button
                 onClick={onOpenDbModal}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center space-x-1.5 transition-colors ${
-                  isDbConnected
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                }`}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center space-x-1.5 transition-colors ${isDbConnected
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  }`}
                 title="공유 PostgreSQL 데이터베이스(Supabase) 연동 상태 확인 및 설정"
               >
                 <Database className="w-3.5 h-3.5" />
@@ -143,13 +142,12 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     key={r}
                     onClick={() => onRoleChange(r)}
-                    className={`px-2 py-1 rounded-md transition-all font-medium ${
-                      isActive
-                        ? r === 'L3_ADMIN'
-                          ? 'bg-purple-600 text-white shadow-sm font-semibold'
-                          : 'bg-brand-600 text-white shadow-sm font-semibold'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`px-2 py-1 rounded-md transition-all font-medium ${isActive
+                      ? r === 'L3_ADMIN'
+                        ? 'bg-purple-600 text-white shadow-sm font-semibold'
+                        : 'bg-brand-600 text-white shadow-sm font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     {label}
                   </button>
@@ -168,6 +166,7 @@ export const Header: React.FC<HeaderProps> = ({
             { id: 'leave', label: '휴가·대근 관리', icon: Users, badge: 'Top 3' },
             { id: 'scenario', label: '시뮬레이터 (원형 큐)', icon: RotateCw },
             { id: 'telegram', label: '텔레그램 봇 연동', icon: Bot },
+            { id: 'bangan', label: '방안부 일근 지원표', icon: CalendarCheck, badge: '8+1' },
             {
               id: 'members',
               label: '슬롯·인원 및 근무 관리',
@@ -177,14 +176,14 @@ export const Header: React.FC<HeaderProps> = ({
             },
             ...(currentRole === 'L3_ADMIN'
               ? [
-                  {
-                    id: 'onestep-test',
-                    label: '원스텝 종합 진단',
-                    icon: Cpu,
-                    badge: 'L3 전용',
-                    highlight: true,
-                  },
-                ]
+                {
+                  id: 'onestep-test',
+                  label: '원스텝 종합 진단',
+                  icon: Cpu,
+                  badge: 'L3 전용',
+                  highlight: true,
+                },
+              ]
               : []),
           ].map((tab) => {
             const Icon = tab.icon;
@@ -193,27 +192,24 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`flex items-center space-x-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                  isActive
-                    ? tab.highlight
-                      ? 'bg-purple-600 text-white shadow-sm'
-                      : 'bg-brand-50 text-brand-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
+                className={`flex items-center space-x-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${isActive
+                  ? tab.highlight
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'bg-brand-50 text-brand-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
               >
                 <Icon
-                  className={`w-4 h-4 ${
-                    isActive ? (tab.highlight ? 'text-white' : 'text-brand-600') : 'text-slate-400'
-                  }`}
+                  className={`w-4 h-4 ${isActive ? (tab.highlight ? 'text-white' : 'text-brand-600') : 'text-slate-400'
+                    }`}
                 />
                 <span>{tab.label}</span>
                 {tab.badge && (
                   <span
-                    className={`px-1.5 py-0.5 text-[10px] rounded-full font-bold ${
-                      isActive && tab.highlight
-                        ? 'bg-purple-700 text-purple-100'
-                        : 'bg-brand-100 text-brand-800'
-                    }`}
+                    className={`px-1.5 py-0.5 text-[10px] rounded-full font-bold ${isActive && tab.highlight
+                      ? 'bg-purple-700 text-purple-100'
+                      : 'bg-brand-100 text-brand-800'
+                      }`}
                   >
                     {tab.badge}
                   </span>

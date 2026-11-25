@@ -10,6 +10,7 @@ import { LeaveReliefModal } from './components/LeaveReliefModal';
 import { ScenarioSimulator } from './components/ScenarioSimulator';
 import { TelegramBotSimulator } from './components/TelegramBotSimulator';
 import { SlotMemberAdmin } from './components/SlotMemberAdmin';
+import { BanganSupportAdmin } from './components/BanganSupportAdmin';
 import { OneStepTestModule } from './components/OneStepTestModule';
 import { AuthModal } from './components/AuthModal';
 import { VersionModal } from './components/VersionModal';
@@ -156,6 +157,7 @@ export default function App() {
             schedule={activeSchedule}
             anonymize={anonymize}
             year={year}
+            onOpenBanganTab={() => setActiveTab('bangan')}
           />
         )}
 
@@ -181,6 +183,13 @@ export default function App() {
           <TelegramBotSimulator
             schedule={activeSchedule}
             anonymize={anonymize}
+          />
+        )}
+
+        {activeTab === 'bangan' && (
+          <BanganSupportAdmin
+            schedule2027={schedule2027}
+            currentRole={currentRole}
           />
         )}
 

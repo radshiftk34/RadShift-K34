@@ -1,15 +1,34 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DaySchedule, ShiftCell } from '../engine/types';
 import { exportPersonalICalendar } from '../utils/icsExport';
-import { Calendar, Clock, Download, Search, ShieldCheck } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  Download,
+  Search,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+  ArrowRight,
+} from 'lucide-react';
+import {
+  loadBanganWorkers,
+  loadBanganAssignments,
+} from '../services/banganScheduleService';
 
 interface TodayDashboardProps {
   schedule: DaySchedule[];
   anonymize: boolean;
   year: number;
+  onOpenBanganTab?: () => void;
 }
 
-export const TodayDashboard: React.FC<TodayDashboardProps> = ({ schedule, anonymize, year }) => {
+export const TodayDashboard: React.FC<TodayDashboardProps> = ({
+  schedule,
+  anonymize,
+  year,
+  onOpenBanganTab,
+}) => {
   // Current real-world date string (YYYY-MM-DD)
   const todayDateStr = useMemo(() => {
     const now = new Date();
@@ -35,12 +54,51 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({ schedule, anonym
     setSelectedDateStr(defaultDateStr);
   }, [defaultDateStr]);
 
+  // Bang-an-bu support data
+  const banganWorkers = useMemo(() => loadBanganWorkers(), []);
+  const banganAssignments = useMemo(() => loadBanganAssignments(), []);
+
+  const getBanganSupportInfo = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const order = banganAssignments[dateStr];
+    if (!order) return null;
+    const worker = banganWorkers.find((w) => w.order === order);
+    return {
+      order,
+      name: worker?.name || `순번 ${order}`,
+      department: worker?.department || '방사선안전부',
+    };
+  };
+
   const dayIndex = schedule.findIndex((d) => d.dateStr === selectedDateStr);
   const today = dayIndex >= 0 ? schedule[dayIndex] : schedule[0];
   const tomorrow = dayIndex >= 0 && dayIndex + 1 < schedule.length ? schedule[dayIndex + 1] : null;
 
-  const getName = (cell: ShiftCell) => {
+  const todayBangan = getBanganSupportInfo(today?.dateStr);
+  const tomorrowBangan = getBanganSupportInfo(tomorrow?.dateStr);
+
+  const handleDateShift = (delta: number) => {
+    const nextIdx = dayIndex + delta;
+    if (nextIdx >= 0 && nextIdx < schedule.length) {
+      setSelectedDateStr(schedule[nextIdx].dateStr);
+    }
+  };
+
+  const handleGoToToday = () => {
+    if (schedule.some((d) => d.dateStr === todayDateStr)) {
+      setSelectedDateStr(todayDateStr);
+    }
+  };
+
+  const getName = (cell: ShiftCell, targetDate?: string) => {
     if (anonymize) return `HP-0${cell.slotNo}`;
+    if (cell.slotNo === 10 || cell.memberName === '방안부지원' || cell.unit === 'SUPPORT') {
+      const bInfo = getBanganSupportInfo(targetDate || today?.dateStr);
+      if (bInfo) {
+        return `[순번 ${bInfo.order}] ${bInfo.name}`;
+      }
+      return '방안부지원 (미배정)';
+    }
     return cell.memberName;
   };
 
@@ -73,19 +131,49 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({ schedule, anonym
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
+          {/* Previous Date Button */}
+          <button
+            onClick={() => handleDateShift(-1)}
+            disabled={dayIndex <= 0}
+            className="p-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 transition-colors"
+            title="이전 날짜로 이동 (하루 전)"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          {/* Date Input */}
           <input
             type="date"
             value={selectedDateStr}
             min={`${year}-01-01`}
             max={`${year}-12-31`}
             onChange={(e) => setSelectedDateStr(e.target.value)}
-            className="text-xs font-semibold px-3 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+            className="text-xs font-semibold px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
           />
+
+          {/* Next Date Button */}
+          <button
+            onClick={() => handleDateShift(1)}
+            disabled={dayIndex >= schedule.length - 1}
+            className="p-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 transition-colors"
+            title="다음 날짜로 이동 (하루 뒤)"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          {/* Go to Today Button */}
+          <button
+            onClick={handleGoToToday}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 transition-colors"
+            title="오늘 날짜로 이동"
+          >
+            오늘
+          </button>
 
           <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>커버리지 정상 (오류 0건)</span>
+            <span>커버리지 정상</span>
           </div>
         </div>
       </div>
@@ -186,6 +274,51 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({ schedule, anonym
                 </span>
               )}
             </div>
+
+            {/* Bang-an-bu Day Support Banner */}
+            {(today?.supportShift || todayBangan) && (
+              <div className="mt-2 p-3 rounded-xl bg-purple-50/90 border border-purple-200 flex items-center justify-between text-xs">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-700 to-brand-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
+                    방안
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-1.5">
+                      <span className="font-extrabold text-purple-950">방안부 Day 교대지원</span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-purple-200 text-purple-800">
+                        {today?.supportShift?.shiftCode || '일근 지원'}
+                      </span>
+                    </div>
+                    <div className="text-purple-800 mt-0.5">
+                      {todayBangan ? (
+                        <span>
+                          지원자: <strong className="font-extrabold text-purple-950">[순번 {todayBangan.order}] {todayBangan.name}</strong>
+                          <span className="text-purple-600 ml-1">({todayBangan.department})</span>
+                        </span>
+                      ) : (
+                        <span className="text-amber-700 font-semibold flex items-center space-x-1">
+                          <span>⚠️ 지원자 미배정</span>
+                          {onOpenBanganTab && (
+                            <button
+                              onClick={onOpenBanganTab}
+                              className="text-purple-700 underline font-bold ml-1 hover:text-purple-900 inline-flex items-center"
+                            >
+                              <span>순번 지정하기</span>
+                              <ArrowRight className="w-3 h-3 ml-0.5" />
+                            </button>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] text-purple-700 font-bold bg-white px-2 py-1 rounded-md border border-purple-200 block">
+                    {today?.supportShift?.badge || '8+1 지원'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -259,6 +392,51 @@ export const TodayDashboard: React.FC<TodayDashboardProps> = ({ schedule, anonym
                       .join(', ')}
                   </div>
                 </div>
+
+                {/* Bang-an-bu Day Support Tomorrow */}
+                {(tomorrow.supportShift || tomorrowBangan) && (
+                  <div className="mt-2 p-3 rounded-xl bg-purple-50/90 border border-purple-200 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-slate-700 to-purple-700 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
+                        방안
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-extrabold text-purple-950">익일 방안부 Day 교대지원</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-purple-200 text-purple-800">
+                            {tomorrow.supportShift?.shiftCode || '일근 지원'}
+                          </span>
+                        </div>
+                        <div className="text-purple-800 mt-0.5">
+                          {tomorrowBangan ? (
+                            <span>
+                              지원자: <strong className="font-extrabold text-purple-950">[순번 {tomorrowBangan.order}] {tomorrowBangan.name}</strong>
+                              <span className="text-purple-600 ml-1">({tomorrowBangan.department})</span>
+                            </span>
+                          ) : (
+                            <span className="text-amber-700 font-semibold flex items-center space-x-1">
+                              <span>⚠️ 지원자 미배정</span>
+                              {onOpenBanganTab && (
+                                <button
+                                  onClick={onOpenBanganTab}
+                                  className="text-purple-700 underline font-bold ml-1 hover:text-purple-900 inline-flex items-center"
+                                >
+                                  <span>순번 지정하기</span>
+                                  <ArrowRight className="w-3 h-3 ml-0.5" />
+                                </button>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[11px] text-purple-700 font-bold bg-white px-2 py-1 rounded-md border border-purple-200 block">
+                        {tomorrow.supportShift?.badge || '8+1 지원'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <p className="text-sm text-slate-400 text-center py-8">익일 데이터가 없습니다.</p>
