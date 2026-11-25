@@ -320,6 +320,39 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
     return map;
   }, [members, targetDate]);
 
+  // ---------------------------------------------------------------------------
+  // 84일 주기 우측 시프트(rotateRight)가 적용된 현재 기준일 원형 큐 슬롯 배정 목록 (1~9칸)
+  // ---------------------------------------------------------------------------
+  const rotatedQueueSlots = useMemo(() => {
+    const k = cycleInfo.shiftSteps; // 0 ~ 8
+
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9].map((displaySlotNo) => {
+      const displayIndex = displaySlotNo - 1; // 0 ~ 8
+      // 원본 슬롯 인덱스: (displayIndex - k + 9) % 9
+      const origIndex = ((displayIndex - k) % 9 + 9) % 9;
+      const origSlotNo = origIndex + 1; // 1 ~ 9
+
+      const is3U = displaySlotNo <= 4;
+      const slotData = activeSlotMembers[origSlotNo];
+      const activeMem = slotData.member;
+      const hasConflict = slotData.hasConflict;
+
+      const memberDisplayName = hasConflict
+        ? slotData.allActive.map((m) => getDisplayName(origSlotNo, m.name)).join(' / ')
+        : getDisplayName(origSlotNo, activeMem.name);
+
+      return {
+        displaySlotNo, // 현재 화면상 슬롯 위치 (1~9)
+        displayUnit: is3U ? ('3호기' as const) : ('4호기' as const),
+        origSlotNo, // 원래 기준 슬롯 번호
+        member: activeMem,
+        allActive: slotData.allActive,
+        hasConflict,
+        memberDisplayName,
+      };
+    });
+  }, [cycleInfo.shiftSteps, activeSlotMembers, anonymize]);
+
   // Editing / Adding Slot Modal State
   const [editingMember, setEditingMember] = useState<SlotMemberData | null>(null);
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
@@ -699,51 +732,64 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
             </div>
 
             {/* Calculated 84-day Cycle Banner */}
-            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 border border-indigo-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center space-x-3">
-                <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
-                  {cycleInfo.cycleNum}
-                </span>
-                <div>
-                  <div className="font-extrabold text-indigo-950 text-sm">
-                    제 {cycleInfo.cycleNum}차 84일 순환 주기 (우측 {cycleInfo.shiftSteps}칸 시프트 적용)
+            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 border border-indigo-200 text-xs space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center space-x-3">
+                  <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
+                    {cycleInfo.cycleNum}
+                  </span>
+                  <div>
+                    <div className="font-extrabold text-indigo-950 text-sm">
+                      제 {cycleInfo.cycleNum}차 84일 순환 주기 (원형 큐 우측 {cycleInfo.shiftSteps}칸 회전 적용)
+                    </div>
+                    <div className="text-slate-600 font-medium mt-0.5">
+                      기준일 <span className="font-bold text-indigo-700">{targetDate}</span> 가 포함되는 주기:
+                      <span className="font-bold text-indigo-900 ml-1">
+                        {cycleInfo.startDate} ~ {cycleInfo.endDate}
+                      </span>
+                      <span className="text-slate-400 ml-1">
+                        (주기 시작일로부터 +{cycleInfo.diffDays % 84}일차)
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-slate-600 font-medium mt-0.5">
-                    기준일 <span className="font-bold text-indigo-700">{targetDate}</span> 가 포함되는 주기:
-                    <span className="font-bold text-indigo-900 ml-1">
-                      {cycleInfo.startDate} ~ {cycleInfo.endDate}
-                    </span>
-                    <span className="text-slate-400 ml-1">
-                      (주기 시작일로부터 +{cycleInfo.diffDays % 84}일차)
-                    </span>
-                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 text-xs font-bold">
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 border border-blue-200">
+                    S1~S4: 3호기 (4명)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    S5~S9: 4호기 (5명)
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 text-xs font-bold">
-                <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 border border-blue-200">
-                  1~4슬롯: 3호기 (4명)
+              {/* Rotated Circular Queue Sequence Preview */}
+              <div className="pt-2 border-t border-indigo-200/60 flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="font-extrabold text-indigo-950">원형 큐 순환 배치:</span>
+                <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-900 font-bold">
+                  3호기: {rotatedQueueSlots.slice(0, 4).map((s) => s.member.name).join(' → ')}
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  5~9슬롯: 4호기 (5명)
+                <span className="text-slate-400 font-bold">|</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold">
+                  4호기: {rotatedQueueSlots.slice(4).map((s) => s.member.name).join(' → ')}
                 </span>
               </div>
             </div>
 
             {/* 9 Slots Circular Grid Cards for the Target Date */}
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-9 gap-3">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((slotNo) => {
-                const is3U = slotNo <= 4;
-                const slotData = activeSlotMembers[slotNo];
-                const activeMem = slotData.member;
-                const hasConflict = slotData.hasConflict;
-                const displayName = hasConflict
-                  ? slotData.allActive.map((m) => getDisplayName(slotNo, m.name)).join(' / ')
-                  : getDisplayName(slotNo, activeMem.name);
+              {rotatedQueueSlots.map((slotItem) => {
+                const displaySlotNo = slotItem.displaySlotNo; // 1 ~ 9
+                const is3U = slotItem.displayUnit === '3호기';
+                const activeMem = slotItem.member;
+                const hasConflict = slotItem.hasConflict;
+                const displayName = slotItem.memberDisplayName;
+                const origSlotNo = slotItem.origSlotNo;
 
                 return (
                   <div
-                    key={slotNo}
+                    key={displaySlotNo}
                     className={`rounded-2xl p-3 border transition-all hover:shadow-md ${
                       hasConflict
                         ? 'bg-rose-50/70 border-rose-300 ring-2 ring-rose-200'
@@ -753,17 +799,27 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
-                      <span
-                        className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
-                          is3U ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white'
-                        }`}
-                      >
-                        S{slotNo}
-                      </span>
+                      <div className="flex items-center space-x-1">
+                        <span
+                          className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                            is3U ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white'
+                          }`}
+                        >
+                          S{displaySlotNo}
+                        </span>
+                        {origSlotNo !== displaySlotNo && (
+                          <span
+                            className="text-[9px] font-mono font-bold px-1 rounded bg-slate-200 text-slate-700"
+                            title={`원 순번: Slot ${origSlotNo}`}
+                          >
+                            원S{origSlotNo}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center space-x-1">
                         {hasConflict && (
                           <span className="text-[9px] font-black px-1 py-0.5 rounded bg-rose-600 text-white animate-pulse">
-                            중복({slotData.allActive.length})
+                            중복({slotItem.allActive.length})
                           </span>
                         )}
                         <span
@@ -771,7 +827,7 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                             is3U ? 'text-blue-700' : 'text-emerald-700'
                           }`}
                         >
-                          {is3U ? '3호기' : '4호기'}
+                          {slotItem.displayUnit}
                         </span>
                       </div>
                     </div>
@@ -906,6 +962,14 @@ export const SlotMemberAdmin: React.FC<SlotMemberAdminProps> = ({
                             >
                               Slot {m.slotNo}
                             </span>
+                            {cycleInfo.shiftSteps > 0 && (
+                              <div
+                                className="text-[10px] text-indigo-700 font-bold mt-0.5 whitespace-nowrap"
+                                title={`선택 기준일(${targetDate}) 84일 시프트 배정 위치`}
+                              >
+                                ↳ 기준일: S{((m.slotNo - 1 + cycleInfo.shiftSteps) % 9) + 1}
+                              </div>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-center font-bold">
                             {m.unit}

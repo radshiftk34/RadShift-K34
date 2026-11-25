@@ -1,12 +1,24 @@
 {
-  "version": "1.4.4",
+  "version": "1.4.5",
   "releaseDate": "2026-11-25",
-  "buildNumber": 9,
+  "buildNumber": 10,
   "appName": "RadShift_K34",
   "serviceName": "한수원 HP 교대근무 관리(고리3,4호기)",
   "repository": "https://github.com/radshiftk34/RadShift-K34",
   "gitCommit": "HEAD",
   "updates": [
+    {
+      "version": "1.4.5",
+      "date": "2026-11-25",
+      "build": 10,
+      "title": "기준일 변경 시 원형 큐 84일 우측 시프트(rotateRight) 실시간 인원 배치 연동",
+      "notes": [
+        "기준일(Target Date) 변경 시 84일 주기 시프트 단계(shiftSteps)에 따라 9칸 원형 큐 인원 배치 실시간 회전",
+        "원형 큐 슬롯 카드에 변경된 배치 요원, 연락처 및 원래 순번(원S#) 뱃지 동적 표출",
+        "84일 순환 주기 배너에 3호기/4호기 인원 큐 순환 실시간 경로 빵부스러기(Breadcrumb) 추가",
+        "근무 이력 관리 목록에 기준일 기준 실시간 배정 슬롯 번호(S#) 표출"
+      ]
+    },
     {
       "version": "1.4.4",
       "date": "2026-11-25",
